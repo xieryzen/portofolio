@@ -32,7 +32,10 @@ $links = array_filter(
                 <?php foreach ($links as $link): ?>
                     <a href="<?= e($link['url']) ?>" target="_blank" rel="noopener noreferrer nofollow"><?= e($socials[$link['key']]) ?></a>
                 <?php endforeach; ?>
-                <a href="<?= e(app_url('/#kontak')) ?>">Kontak</a>
+                <a href="<?= e(app_url('/#kontak')) ?>"><?= e(t('nav.contact')) ?></a>
+                <a href="<?= e(\App\Lang::switchUrl(locale_is('id') ? 'en' : 'id')) ?>" hreflang="<?= locale_is('id') ? 'en' : 'id' ?>">
+                    <?= locale_is('id') ? 'English' : 'Indonesia' ?>
+                </a>
                 <span>© <?= date('Y') ?></span>
             </div>
         </div>

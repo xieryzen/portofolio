@@ -112,7 +112,121 @@ final class Uploader
 
         @chmod($destination, 0644);
 
+        // Optimasi: konversi ke WebP + batasi lebar (bila GD tersedia).
+        $optimized = Image::toWebp($destination, $mime, $name);
+        if ($optimized !== null) {
+            if ($optimized['file'] !== $name) {
+                @unlink($destination);
+                $name = $optimized['file'];
+            }
+        }
+
         return ['ok' => true, 'file' => $name];
+    }
+
+    /**
+     * Upload CV (PDF) dengan validasi isi file.
+     *
+     * @param array<string, mixed> $file elemen dari $_FILES
+     *
+     * @return array{ok: bool, file?: string, original_name?: string, size?: int, error?: string}
+     */
+    public static function document(array $file): array
+    {
+        if (!isset($file['error']) || is_array($file['error'])) {
+            return ['ok' => false, 'error' => 'File tidak valid.'];
+        }
+
+        if ((int) $file['error'] === UPLOAD_ERR_NO_FILE) {
+            return ['ok' => false, 'error' => 'Tidak ada file yang dipilih.'];
+        }
+
+        if ((int) $file['error'] !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'error' => self::uploadErrorMessage((int) $file['error'])];
+        }
+
+        $maxMb = max(1, Config::int('cv_max_mb', 10));
+        if ((int) ($file['size'] ?? 0) > $maxMb * 1024 * 1024) {
+            return ['ok' => false, 'error' => 'Ukuran CV maksimal ' . $maxMb . ' MB.'];
+        }
+
+        if ((int) ($file['size'] ?? 0) === 0) {
+            return ['ok' => false, 'error' => 'File CV kosong (0 byte).'];
+        }
+
+        $tmpPath = (string) ($file['tmp_name'] ?? '');
+        if ($tmpPath === '' || (!is_uploaded_file($tmpPath) && !is_file($tmpPath))) {
+            return ['ok' => false, 'error' => 'File upload tidak ditemukan.'];
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = strtolower((string) $finfo->file($tmpPath));
+
+        if ($mime !== 'application/pdf') {
+            return ['ok' => false, 'error' => 'CV harus berupa berkas PDF.'];
+        }
+
+        $handle = @fopen($tmpPath, 'rb');
+        if ($handle !== false) {
+            $head = (string) fread($handle, 5);
+            fclose($handle);
+
+            if (strncmp($head, '%PDF-', 5) !== 0) {
+                return ['ok' => false, 'error' => 'Berkas bukan PDF yang valid.'];
+            }
+        }
+
+        $directory = self::documentDirectory();
+        $fileName = 'cv-' . date('Ymd') . '-' . bin2hex(random_bytes(6)) . '.pdf';
+        $destination = $directory . '/' . $fileName;
+
+        $moved = is_uploaded_file($tmpPath)
+            ? move_uploaded_file($tmpPath, $destination)
+            : rename($tmpPath, $destination);
+
+        if (!$moved) {
+            return ['ok' => false, 'error' => 'Gagal menyimpan CV. Periksa izin folder storage/documents.'];
+        }
+
+        @chmod($destination, 0644);
+
+        $original = (string) ($file['name'] ?? 'cv.pdf');
+
+        return [
+            'ok' => true,
+            'file' => $fileName,
+            'original_name' => self::safeOriginalName($original, 'pdf'),
+            'size' => (int) filesize($destination),
+        ];
+    }
+
+    public static function deleteDocument(?string $fileName): void
+    {
+        if (!$fileName) {
+            return;
+        }
+
+        $path = self::documentDirectory() . '/' . basename($fileName);
+
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+
+    public static function documentDirectory(): string
+    {
+        $directory = base_path('storage/documents');
+
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new RuntimeException('Folder dokumen tidak bisa dibuat: ' . $directory);
+        }
+
+        return $directory;
+    }
+
+    public static function maxCvMb(): int
+    {
+        return max(1, Config::int('cv_max_mb', 10));
     }
 
     public static function delete(?string $fileName): void

@@ -151,8 +151,10 @@ final class Project
     {
         $statement = Database::connection()->prepare(
             'INSERT INTO projects (title, slug, summary, description, category, client, role, year, tech_stack,
+                case_challenge, case_solution, case_result, case_metrics,
                 project_url, repo_url, cover, is_featured, status, sort_order, created_at, updated_at)
              VALUES (:title, :slug, :summary, :description, :category, :client, :role, :year, :tech_stack,
+                :case_challenge, :case_solution, :case_result, :case_metrics,
                 :project_url, :repo_url, :cover, :is_featured, :status, :sort_order, :created_at, :updated_at)'
         );
 
@@ -167,6 +169,10 @@ final class Project
             'role' => $data['role'] ?? '',
             'year' => $data['year'] ?? '',
             'tech_stack' => $data['tech_stack'] ?? '',
+            'case_challenge' => $data['case_challenge'] ?? '',
+            'case_solution' => $data['case_solution'] ?? '',
+            'case_result' => $data['case_result'] ?? '',
+            'case_metrics' => $data['case_metrics'] ?? '',
             'project_url' => $data['project_url'] ?? '',
             'repo_url' => $data['repo_url'] ?? '',
             'cover' => $data['cover'] ?? null,
@@ -188,6 +194,8 @@ final class Project
         $statement = Database::connection()->prepare(
             'UPDATE projects SET title = :title, slug = :slug, summary = :summary, description = :description,
                 category = :category, client = :client, role = :role, year = :year, tech_stack = :tech_stack,
+                case_challenge = :case_challenge, case_solution = :case_solution, case_result = :case_result,
+                case_metrics = :case_metrics,
                 project_url = :project_url, repo_url = :repo_url, is_featured = :is_featured, status = :status,
                 sort_order = :sort_order, updated_at = :updated_at
              WHERE id = :id'
@@ -204,6 +212,10 @@ final class Project
             'role' => $data['role'] ?? '',
             'year' => $data['year'] ?? '',
             'tech_stack' => $data['tech_stack'] ?? '',
+            'case_challenge' => $data['case_challenge'] ?? '',
+            'case_solution' => $data['case_solution'] ?? '',
+            'case_result' => $data['case_result'] ?? '',
+            'case_metrics' => $data['case_metrics'] ?? '',
             'project_url' => $data['project_url'] ?? '',
             'repo_url' => $data['repo_url'] ?? '',
             'is_featured' => (int) ($data['is_featured'] ?? 0),

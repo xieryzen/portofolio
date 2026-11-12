@@ -6,8 +6,10 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 /storage/releases/*
+/storage/documents/*
 /storage/backups/
 !/storage/releases/.gitkeep
+!/storage/documents/.gitkeep
 /storage/sessions/*
 !/storage/sessions/.gitkeep
 /storage/logs/*

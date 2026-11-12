@@ -90,6 +90,9 @@ $menu = [
                     <?= svg_icon('lock') ?> Keamanan
                 </a>
                 <?php if (($authUser['role'] ?? '') === 'owner'): ?>
+                    <a href="<?= e(app_url('/admin/stats')) ?>" class="<?= is_active_path('/admin/stats') ? 'is-active' : '' ?>">
+                        <?= svg_icon('chart') ?> Statistik
+                    </a>
                     <a href="<?= e(app_url('/admin/activity')) ?>" class="<?= is_active_path('/admin/activity') ? 'is-active' : '' ?>">
                         <?= svg_icon('clock') ?> Aktivitas
                     </a>

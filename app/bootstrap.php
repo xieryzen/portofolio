@@ -183,6 +183,8 @@ View::share('siteTitle', Settings::get('site_title', 'Portfolio'));
 View::share('accent', accent_color());
 View::share('registrationOpen', registration_open());
 View::share('currentPath', current_path());
+\App\Lang::boot();
+View::share('locale', \App\Lang::locale());
 View::share('profile', App\Models\Profile::get());
 
 try {

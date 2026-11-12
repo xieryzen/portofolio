@@ -15,13 +15,13 @@ final class ContactController extends Controller
         // Honeypot: bot biasanya mengisi field tersembunyi.
         if ($this->inputString('website') !== '') {
             \flash('success', 'Pesan Anda sudah terkirim. Terima kasih!');
-            $this->redirect('/#contact');
+            $this->redirect('/#kontak');
         }
 
         $lastSent = (int) ($_SESSION['_contact_last'] ?? 0);
         if ($lastSent > 0 && (time() - $lastSent) < 45) {
             \flash('info', 'Pesan sebelumnya baru saja terkirim. Mohon tunggu sebentar.');
-            $this->redirect('/#contact');
+            $this->redirect('/#kontak');
         }
 
         $data = [
@@ -43,7 +43,7 @@ final class ContactController extends Controller
         );
 
         if ($validator->fails()) {
-            $this->backWithErrors($validator->errors(), $data, '/#contact');
+            $this->backWithErrors($validator->errors(), $data, '/#kontak');
         }
 
         $subject = $data['subject'] !== '' ? $data['subject'] : 'Pesan dari situs portofolio';
@@ -65,6 +65,6 @@ final class ContactController extends Controller
         $_SESSION['_contact_last'] = time();
         $this->clearFormState();
         \flash('success', 'Terima kasih, ' . $data['name'] . '! Pesan Anda sudah terkirim.');
-        $this->redirect('/#contact');
+        $this->redirect('/#kontak');
     }
 }

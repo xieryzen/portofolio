@@ -8,6 +8,7 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 ![PHP](https://img.shields.io/badge/PHP-8.3%2B-777bb4)
 ![Database](https://img.shields.io/badge/Database-SQLite%20%7C%20MySQL-0ea5e9)
 ![License](https://img.shields.io/badge/License-MIT-22c55e)
+[![CI](https://github.com/xieryzen/portofolio/actions/workflows/ci.yml/badge.svg)](https://github.com/xieryzen/portofolio/actions/workflows/ci.yml)
 
 ---
 
@@ -24,6 +25,10 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - **Tema terang & gelap**: tombol di header/admin, tersimpan di browser, dan otomatis mengikuti
   preferensi sistem (`prefers-color-scheme`) bila belum dipilih.
 - **Pencarian project** di beranda (judul, ringkasan, kategori, tech stack) lewat `/?q=kata`.
+- **Dua bahasa (ID/EN)** untuk seluruh antarmuka publik, lengkap dengan tombol ID/EN, cookie
+  preferensi bahasa, dan tag `hreflang`.
+- **Tombol Unduh CV** otomatis muncul di hero, navbar, dan menu HP setelah PDF diunggah dari panel.
+- **Halaman studi kasus** per project: tantangan, solusi, hasil, dan kartu metrik.
 - **SEO**: `sitemap.xml` dinamis (beranda + semua project terbit) dan `robots.txt` yang menunjuk sitemap.
 - **PWA**: bisa dipasang ke home screen (Android/iOS), aset di-cache service worker, dan ada
   halaman `/offline` saat koneksi putus. Area admin & unduhan tidak pernah di-cache.
@@ -53,6 +58,9 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Pengaturan: judul situs, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
 - **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
   lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
+- **CV (PDF)**: unggah/ganti/hapus CV dari halaman Profil.
+- **Studi kasus**: tiga blok teks + metrik per project dari form project.
+- **Statistik kunjungan**: grafik 14 hari, halaman populer, dan sumber kunjungan tanpa data pribadi.
 - **Keamanan akun**: aktifkan/nonaktifkan 2FA, lihat sisa kode pemulihan, buat ulang kode pemulihan.
 - **Log aktivitas**: 40 entri terbaru per halaman dengan waktu, akun, aksi, keterangan, dan alamat IP.
 
@@ -311,6 +319,66 @@ Catatan:
 
 ---
 
+## 🖼️ Optimasi gambar (WebP)
+
+Setiap gambar yang diunggah (avatar, cover, sampul project, dokumentasi) otomatis:
+
+1. diperkecil bila lebih lebar dari `IMAGE_MAX_WIDTH` (default 1600 px), lalu
+2. dikonversi ke **WebP** dengan kualitas `IMAGE_WEBP_QUALITY` (default 82).
+
+Konversi memakai ekstensi **GD** (`imagewebp`). Bila GD tidak tersedia di hosting, file asli tetap
+dipakai tanpa error — tidak ada gambar yang hilang. GIF tidak dikonversi agar animasinya tidak
+hilang, dan WebP yang hasilnya justru lebih besar dari aslinya tidak dipakai.
+
+Matikan lewat `.env` bila tidak diinginkan:
+
+```env
+IMAGE_WEBP=false
+```
+
+---
+
+## 📄 Tombol Unduh CV
+
+1. Buka **Admin → Profil**, kartu **CV (PDF)**.
+2. Unggah berkas PDF (maksimal `CV_MAX_MB`, default 10 MB, isi diverifikasi `%PDF-`).
+3. Tombol **Unduh CV** langsung tampil di hero, navbar desktop, dan menu HP.
+   Hapus/ganti kapan saja dari kartu yang sama.
+
+File disimpan di `storage/documents/` dan hanya bisa diunduh lewat route `/cv`
+(tidak bisa diakses langsung dari web server).
+
+---
+
+## 📊 Statistik kunjungan
+
+Statistik ringan tanpa layanan eksternal dan **tanpa data pribadi**:
+
+- hanya halaman publik (`/` dan `/project/{slug}`) yang dihitung,
+- bot/crawler (Googlebot, curl, monitor, dsb.) difilter lewat user-agent,
+- yang disimpan hanya path, host referrer, dan penanda bot — bukan IP atau cookie,
+- entri lebih tua dari 365 hari dibersihkan otomatis.
+
+Halaman **Admin → Statistik** (khusus owner) menampilkan total hari ini/7 hari/30 hari/total,
+grafik 14 hari terakhir, halaman populer, dan sumber kunjungan.
+
+---
+
+## 🌐 Dua bahasa (ID/EN)
+
+Halaman publik tersedia dalam **Indonesia** dan **Inggris**:
+
+- tombol **ID / EN** di navbar dan menu HP, atau tambahkan `?lang=en` pada URL,
+- pilihan disimpan di cookie `lang` selama satu tahun,
+- kunjungan pertama tanpa pilihan mengikuti header `Accept-Language`,
+- tag `<html lang>` dan `hreflang` diisi otomatis untuk SEO.
+
+Isi database (profil, judul project, deskripsi, studi kasus) tidak diterjemahkan otomatis —
+kamus antarmuka ada di `lang/id.php` dan `lang/en.php` bila ingin menyesuaikan teks.
+**Panel admin tetap berbahasa Indonesia.**
+
+---
+
 ## 🔒 Verifikasi dua langkah (2FA)
 
 2FA bersifat opsional dan diatur per akun (owner maupun admin) lewat **/admin/security**.
@@ -358,6 +426,10 @@ kata sandi saja. Catat aksi ini di log server.
 | `OWNER_PASSWORD` | `Owner12345!` | Kata sandi owner awal. |
 | `ALLOW_REGISTRATION` | `true` | Izinkan pendaftaran user. |
 | `MAX_UPLOAD_MB` | `6` | Batas ukuran tiap gambar. |
+| `IMAGE_WEBP` | `true` | Konversi otomatis gambar ke WebP (butuh GD). |
+| `IMAGE_MAX_WIDTH` | `1600` | Lebar maksimal gambar setelah upload (px). |
+| `IMAGE_WEBP_QUALITY` | `82` | Kualitas WebP (45–95). |
+| `CV_MAX_MB` | `10` | Batas ukuran PDF CV. |
 | `RELEASE_MAX_MB` | `50` | Batas ukuran tiap file rilis/unduhan (maks 500). |
 | `BACKUP_MAX_MB` | `200` | Batas ukuran ZIP cadangan saat restore (maks 1024). |
 | `ACCENT_COLOR` | `#6d8bff` | Warna aksen awal. |
@@ -391,6 +463,7 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/manifest.webmanifest` | publik | Manifest PWA (nama, ikon, warna tema) |
 | `/sw.js` | publik | Service worker (cache app shell) |
 | `/offline` | publik | Halaman cadangan saat offline |
+| `/cv` | publik* | Unduh CV PDF (*bila sudah diunggah) |
 | `/sitemap.xml` | publik | Sitemap dinamis untuk mesin pencari |
 | `/robots.txt` | publik | Aturan crawler + tautan sitemap |
 | `/download/{id}` | publik* | Unduh file rilis (*hanya rilis & project berstatus publik; admin selalu bisa) |
@@ -409,6 +482,8 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/admin/backup` | **owner** | Cadangan & restore data |
 | `/admin/backup/database` | **owner** | Unduh berkas database SQLite |
 | `/admin/backup/archive` | **owner** | Unduh ZIP cadangan lengkap |
+| `/admin/stats` | **owner** | Statistik kunjungan |
+| `/admin/profile/cv` | owner/admin | Unggah / ganti CV (POST) |
 | `/admin/security` | owner/admin | Aktifkan 2FA, kode pemulihan |
 | `/admin/activity` | **owner** | Log aktivitas (login, 2FA, perubahan) |
 | `/admin/settings` | **owner** | Identitas situs, warna, akun owner |
@@ -435,10 +510,34 @@ Di Pterodactyl, buka tab **Console** server lalu jalankan perintah di atas.
 
 ---
 
+## 🧪 CI smoke test
+
+Workflow `.github/workflows/ci.yml` berjalan otomatis pada setiap push ke `main` dan setiap
+pull request:
+
+1. `php -l` untuk semua file PHP,
+2. migrasi + seed database SQLite baru, cek CLI (`user:list`, `stats`),
+3. uji TOTP/base32 dan kode pemulihan,
+4. menyalakan `php -S` memakai `router.php` lalu memeriksa `/`, `/login`, `/offline`,
+   `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`, halaman project (ID & EN), dan
+   memastikan `/admin` tetap terlindungi,
+5. gagal bila ada `PHP Warning`/`Fatal error` di log server.
+
+Jalankan lokal dengan perintah yang sama seperti di workflow, atau minimal:
+
+```bash
+cp .env.example .env
+php bin/console migrate
+php -S 127.0.0.1:8080 -t public router.php
+```
+
+---
+
 ## 📁 Struktur folder
 
 ```
-app/                 kode inti (Config, Database, Auth, Router, Validator, Uploader, Model, Controller)
+app/                 kode inti (Config, Database, Auth, Router, Validator, Uploader, Image, Visits, Model, Controller)
+lang/                kamus antarmuka publik (id.php, en.php)
 bin/console          utilitas CLI
 public/              document root: index.php, assets, .htaccess
 views/               template (layout, halaman publik, admin, auth, error)
@@ -448,6 +547,8 @@ router.php           router untuk PHP built-in server
 start.sh             entry point (Pterodactyl/Docker)
 .env.example         contoh konfigurasi
 ```
+
+CV disimpan di `storage/documents/` dan dilayani lewat `/cv`.
 
 Gambar yang diunggah disimpan di `storage/uploads/` dan **tidak** dapat diakses langsung;
 dilayani lewat route `/media/{file}` dengan validasi nama file, sehingga aman meski
@@ -467,6 +568,9 @@ dan hanya bisa diunduh lewat route `/download/{id}` yang mengecek status publika
 - 2FA memakai TOTP RFC 6238 (SHA-1, 30 detik, toleransi ±1 langkah). Kode pemulihan disimpan
   sebagai hash bcrypt dan dihapus setelah dipakai.
 - Log aktivitas tidak pernah menyimpan kata sandi, kode 2FA, atau isi pesan.
+- CV divalidasi MIME PDF + signature `%PDF-`, disimpan di luar document root.
+- Statistik kunjungan tidak menyimpan IP, cookie, atau user-agent lengkap.
+- Gambar dikonversi ulang lewat GD (bukan mengeksekusi file), nama file selalu diacak.
 - Semua output user di-escape dengan `e()`.
 - Jangan set `APP_DEBUG=true` di produksi dan jangan bagikan `.env`.
 

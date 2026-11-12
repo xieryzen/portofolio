@@ -192,11 +192,48 @@ $value = static fn (string $key): string => \old($key, $profile[$key] ?? '');
         </div>
 
         <div class="card">
+            <div class="card-head"><h2>CV (PDF)</h2></div>
+            <div class="card-body">
+                <?php $cvFile = setting('cv_file', ''); ?>
+                <?php if ($cvFile !== ''): ?>
+                    <p class="small" style="margin-bottom:12px">
+                        <?= svg_icon('file', 'icon-sm') ?>
+                        <a href="<?= e(app_url('/cv')) ?>" target="_blank" rel="noopener">Pratinjau CV</a>
+                        <span class="muted">· <?= e((string) setting('cv_original_name', 'cv.pdf')) ?></span>
+                    </p>
+                <?php else: ?>
+                    <p class="small muted" style="margin-bottom:12px">
+                        Unggah CV berformat PDF. Tombol <strong>Unduh CV</strong> akan muncul di halaman publik
+                        (hero, navbar, dan area lain yang relevan).
+                    </p>
+                <?php endif; ?>
+
+                <form method="post" action="<?= e(app_url('/admin/profile/cv')) ?>" enctype="multipart/form-data" style="display:grid;gap:10px">
+                    <?= csrf_field() ?>
+                    <div class="field">
+                        <label for="cv-file" class="hint"><?= $cvFile !== '' ? 'Ganti berkas CV' : 'Pilih berkas CV' ?></label>
+                        <input class="input" type="file" id="cv-file" name="cv" accept="application/pdf,.pdf" required style="padding:9px">
+                    </div>
+                    <button class="btn btn-soft btn-sm btn-block" type="submit"><?= svg_icon('download', 'icon-sm') ?> <?= $cvFile !== '' ? 'Ganti CV' : 'Unggah CV' ?></button>
+                    <span class="hint text-center">PDF · maks <?= \App\Uploader::maxCvMb() ?> MB</span>
+                </form>
+
+                <?php if ($cvFile !== ''): ?>
+                    <form method="post" action="<?= e(app_url('/admin/profile/cv/delete')) ?>" class="mt-1" data-confirm="Hapus CV? Tombol Unduh CV akan disembunyikan.">
+                        <?= csrf_field() ?>
+                        <button class="btn btn-danger btn-sm btn-block" type="submit"><?= svg_icon('trash', 'icon-sm') ?> Hapus CV</button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card">
             <div class="card-head"><h2>Tips</h2></div>
             <div class="card-body">
                 <ul style="display:grid;gap:10px;font-size:13px;color:var(--muted)">
                     <li>Gunakan foto profil persegi minimal 500×500 px.</li>
                     <li>Foto sampul ideal 1600×900 px.</li>
+                    <li>Gambar JPG/PNG otomatis dikonversi ke WebP (lebih ringan) bila server punya ekstensi GD.</li>
                     <li>Headline yang jelas membantu pengunjung memahami fokus Anda.</li>
                     <li>Perubahan langsung tampil setelah disimpan.</li>
                 </ul>

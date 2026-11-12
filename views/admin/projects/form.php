@@ -87,6 +87,36 @@ $categories = ['Web App', 'Website', 'Dashboard', 'Mobile App', 'API / Backend',
             </div>
 
             <div class="card">
+                <div class="card-head"><h2>Studi kasus</h2></div>
+                <div class="card-body form-section">
+                    <p class="small muted" style="margin-bottom:4px">
+                        Opsional. Bagian ini tampil di halaman project sebagai “Studi kasus” dengan tiga blok dan kartu metrik.
+                    </p>
+
+                    <div class="field">
+                        <label for="case_challenge">Tantangan</label>
+                        <textarea class="textarea" id="case_challenge" name="case_challenge" rows="5" maxlength="4000" placeholder="Masalah atau kondisi awal yang dihadapi klien…"><?= e($value('case_challenge')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_solution">Solusi</label>
+                        <textarea class="textarea" id="case_solution" name="case_solution" rows="5" maxlength="4000" placeholder="Pendekatan dan hal yang Anda kerjakan…"><?= e($value('case_solution')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_result">Hasil</label>
+                        <textarea class="textarea" id="case_result" name="case_result" rows="4" maxlength="4000" placeholder="Dampak setelah project berjalan…"><?= e($value('case_result')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_metrics">Metrik (opsional)</label>
+                        <textarea class="textarea" id="case_metrics" name="case_metrics" rows="4" maxlength="1200" placeholder="Waktu muat|1,2 detik&#10;Konversi|+38%&#10;Biaya server|-40%"><?= e($value('case_metrics')) ?></textarea>
+                        <span class="hint">Satu metrik per baris dengan format <code>Label|Nilai</code>. Baris tanpa tanda <code>|</code> dianggap nilai saja.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-head"><h2>Tautan</h2></div>
                 <div class="card-body form-section">
                     <div class="form-row">

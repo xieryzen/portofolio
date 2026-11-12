@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Lint & smoke test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3, gd, fileinfo, curl, zip
+          coverage: none
+
+      - name: Lint semua file PHP
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find app bin lang public views -name '*.php' -o -name 'console' | sort)
+          files+=("router.php")
+          fail=0
+          for file in "${files[@]}"; do
+            output=$(php -l "$file" 2>&1) || { echo "$output"; fail=1; }
+          done
+          [ "$fail" -eq 0 ]
+          echo "✔ $((${#files[@]})) file lolos lint"
+
+      - name: Siapkan database & seed
+        run: |
+          set -euo pipefail
+          cp .env.example .env
+          php bin/console migrate
+          php bin/console user:list
+          php bin/console stats
+
+      - name: Uji unit ringan (TOTP & base32)
+        run: |
+          set -euo pipefail
+          php -r '
+          require "app/bootstrap.php";
+          $raw = random_bytes(20);
+          if (App\Totp::base32Decode(App\Totp::base32Encode($raw)) !== $raw) { fwrite(STDERR, "base32 gagal\n"); exit(1); }
+          $code = App\Totp::code(App\Totp::generateSecret());
+          if (!preg_match("/^\d{6}$/", $code)) { fwrite(STDERR, "kode TOTP tidak valid\n"); exit(1); }
+          $secret = App\Totp::generateSecret();
+          if (!App\Totp::verify($secret, App\Totp::code($secret))) { fwrite(STDERR, "verifikasi TOTP gagal\n"); exit(1); }
+          $hashed = App\Totp::hashRecoveryCodes(["AAAAA-BBBBB"]);
+          if (App\Totp::consumeRecoveryCode($hashed, "aaaaabbbbb") === null) { fwrite(STDERR, "kode pemulihan gagal\n"); exit(1); }
+          echo "✔ TOTP & kode pemulihan OK\n";
+          '
+
+      - name: Smoke test HTTP
+        run: |
+          set -euo pipefail
+
+          php -S 127.0.0.1:8080 -t public router.php > server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 40); do
+            if curl -sf -o /dev/null http://127.0.0.1:8080/; then break; fi
+            sleep 0.5
+          done
+
+          check() {
+            local url="$1" needle="$2"
+            local code
+            code=$(curl -sS -o /tmp/body -w '%{http_code}' "$url")
+            if [ "$code" != "200" ]; then
+              echo "✖ $url → HTTP $code"
+              head -40 /tmp/body
+              exit 1
+            fi
+            if ! grep -q "$needle" /tmp/body; then
+              echo "✖ $url tidak memuat: $needle"
+              exit 1
+            fi
+            echo "✔ $url"
+          }
+
+          check "http://127.0.0.1:8080/" "Karya pilihan"
+          check "http://127.0.0.1:8080/?lang=en" "Selected work"
+          check "http://127.0.0.1:8080/login" "Masuk"
+          check "http://127.0.0.1:8080/offline" "Mode offline"
+          check "http://127.0.0.1:8080/sitemap.xml" "<urlset"
+          check "http://127.0.0.1:8080/robots.txt" "Sitemap"
+          check "http://127.0.0.1:8080/manifest.webmanifest" "start_url"
+
+          slug=$(php -r 'require "app/bootstrap.php"; $items = App\Models\Project::published(1); echo $items[0]["slug"] ?? "";')
+          if [ -n "$slug" ]; then
+            check "http://127.0.0.1:8080/project/$slug" "Tentang project"
+            check "http://127.0.0.1:8080/project/$slug?lang=en" "About the project"
+          fi
+
+          admin_code=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/admin)
+          if [ "$admin_code" != "302" ]; then
+            echo "✖ /admin seharusnya redirect ke login, dapat HTTP $admin_code"
+            exit 1
+          fi
+          echo "✔ /admin terlindungi (302)"
+
+          if grep -qiE "PHP (Warning|Fatal error|Parse error)|Uncaught" server.log; then
+            echo "✖ Ada error PHP di server log:"
+            cat server.log
+            exit 1
+          fi
+          echo "✔ Tidak ada warning/fatal di server log"

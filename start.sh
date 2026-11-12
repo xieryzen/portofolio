@@ -15,7 +15,7 @@ if [ "$HOST" = "127.0.0.1" ] || [ -z "$HOST" ]; then
 fi
 
 # Folder yang harus writable oleh container.
-mkdir -p storage/uploads storage/sessions storage/logs
+mkdir -p storage/uploads storage/releases storage/documents storage/sessions storage/logs
 
 # Buat .env otomatis pada deploy pertama.
 if [ ! -f .env ]; then
