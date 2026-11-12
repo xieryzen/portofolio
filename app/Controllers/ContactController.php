@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Models\Message;
+use App\Notifier;
 use App\Validator;
 
 final class ContactController extends Controller
@@ -45,13 +46,21 @@ final class ContactController extends Controller
             $this->backWithErrors($validator->errors(), $data, '/#contact');
         }
 
-        Message::create(
-            $data['name'],
-            $data['email'],
-            $data['subject'] !== '' ? $data['subject'] : 'Pesan dari situs portofolio',
-            $data['body'],
-            client_ip()
-        );
+        $subject = $data['subject'] !== '' ? $data['subject'] : 'Pesan dari situs portofolio';
+
+        Message::create($data['name'], $data['email'], $subject, $data['body'], client_ip());
+
+        // Notifikasi bersifat opsional — kegagalan kanal tidak boleh menggagalkan form.
+        try {
+            Notifier::notifyContact([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'subject' => $subject,
+                'body' => $data['body'],
+            ]);
+        } catch (\Throwable) {
+            // diamkan; detail tercatat di storage/logs/notify.log
+        }
 
         $_SESSION['_contact_last'] = time();
         $this->clearFormState();

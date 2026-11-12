@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Auth;
 use App\Controllers\Controller;
 use App\Models\User;
+use App\Notifier;
 use App\Settings;
 use App\Validator;
 
@@ -19,6 +20,9 @@ final class SettingsController extends Controller
         $this->view('admin/settings', [
             'title' => 'Pengaturan',
             'user' => Auth::user(),
+            'notifyChannels' => Notifier::channels(),
+            'notifyEnabled' => Notifier::enabled(),
+            'notifyLogs' => Notifier::recentLogs(),
         ], 'layouts/admin');
     }
 
@@ -33,6 +37,7 @@ final class SettingsController extends Controller
             'footer_text' => $this->inputString('footer_text'),
             'show_contact' => $this->input('show_contact') === '1' ? '1' : '0',
             'allow_registration' => $this->input('allow_registration') === '1' ? '1' : '0',
+            'notify_contact' => $this->input('notify_contact') === '1' ? '1' : '0',
         ];
 
         $validator = new Validator(
@@ -57,6 +62,36 @@ final class SettingsController extends Controller
         Settings::flush();
 
         \flash('success', 'Pengaturan situs disimpan.');
+        $this->redirect('/admin/settings');
+    }
+
+    public function testNotify(): void
+    {
+        Auth::requireOwner();
+
+        $results = Notifier::sendTest();
+
+        if ($results === []) {
+            \flash('info', 'Belum ada kanal notifikasi yang dikonfigurasi. Isi TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID, NOTIFY_WEBHOOK_URL, atau SMTP_* di .env lalu restart server.');
+            $this->redirect('/admin/settings');
+        }
+
+        $ok = array_values(array_filter($results, static fn (array $item): bool => $item['ok'] === true));
+        $failed = array_values(array_filter($results, static fn (array $item): bool => $item['ok'] === false));
+
+        $lines = [];
+        foreach ($results as $item) {
+            $lines[] = $item['channel'] . ': ' . ($item['ok'] ? 'berhasil' : 'gagal — ' . $item['detail']);
+        }
+
+        if ($failed === []) {
+            \flash('success', 'Tes notifikasi terkirim — ' . implode('; ', $lines));
+        } elseif ($ok === []) {
+            \flash('error', 'Semua kanal gagal — ' . implode('; ', $lines));
+        } else {
+            \flash('info', implode('; ', $lines));
+        }
+
         $this->redirect('/admin/settings');
     }
 
