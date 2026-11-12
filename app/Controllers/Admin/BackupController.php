@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Auth;
 use App\Backup;
 use App\Controllers\Controller;
+use App\Models\ActivityLog;
 
 final class BackupController extends Controller
 {
@@ -150,6 +151,7 @@ final class BackupController extends Controller
             $this->redirect('/admin/backup');
         }
 
+        ActivityLog::record('backup_restored', 'Memulihkan data dari berkas cadangan');
         \flash('success', $result['message'] ?? 'Data berhasil dipulihkan.');
         $this->redirect('/admin/backup');
     }

@@ -43,6 +43,7 @@ switch ($command) {
         echo $line('  php bin/console password:reset <email> <password>');
         echo $line('                                             Reset kata sandi akun');
         echo $line('  php bin/console user:list                  Daftar akun');
+        echo $line('  php bin/console 2fa:disable <email>        Matikan 2FA akun (darurat)');
         echo $line('  php bin/console key:generate               Buat APP_KEY acak');
         echo $line('  php bin/console stats                      Ringkasan data');
         echo $line('  php bin/console db:reset --force           Hapus semua data (hati-hati!)');
@@ -82,6 +83,25 @@ switch ($command) {
 
         User::create($name, $email, $password, 'owner');
         echo $ok('Akun owner ' . $email . ' berhasil dibuat.');
+
+        exit(0);
+
+    case '2fa:disable':
+        $email = $args[0] ?? '';
+
+        if ($email === '') {
+            echo $err('Penggunaan: php bin/console 2fa:disable <email>');
+            exit(1);
+        }
+
+        $user = User::findByEmail($email);
+        if (!$user) {
+            echo $err('Akun dengan email tersebut tidak ditemukan.');
+            exit(1);
+        }
+
+        User::disableTotp((int) $user['id']);
+        echo $ok('2FA untuk ' . $email . ' dimatikan. Kode pemulihan ikut dihapus.');
 
         exit(0);
 

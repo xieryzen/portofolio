@@ -86,6 +86,14 @@ $menu = [
         <div>
             <p class="side-label">Sistem</p>
             <nav class="side-nav" aria-label="Navigasi sistem">
+                <a href="<?= e(app_url('/admin/security')) ?>" class="<?= is_active_path('/admin/security') ? 'is-active' : '' ?>">
+                    <?= svg_icon('lock') ?> Keamanan
+                </a>
+                <?php if (($authUser['role'] ?? '') === 'owner'): ?>
+                    <a href="<?= e(app_url('/admin/activity')) ?>" class="<?= is_active_path('/admin/activity') ? 'is-active' : '' ?>">
+                        <?= svg_icon('clock') ?> Aktivitas
+                    </a>
+                <?php endif; ?>
                 <a href="<?= e(app_url('/admin/backup')) ?>" class="<?= is_active_path('/admin/backup') ? 'is-active' : '' ?>">
                     <?= svg_icon('database') ?> Cadangan
                 </a>

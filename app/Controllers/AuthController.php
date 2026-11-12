@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Auth;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Validator;
 
@@ -47,6 +48,7 @@ final class AuthController extends Controller
 
         if (!$user || !password_verify($password, (string) $user['password_hash'])) {
             Auth::recordAttempt($email);
+            ActivityLog::record('login_failed', 'Kata sandi salah', null, $email);
             $this->backWithErrors(
                 ['email' => 'Email atau kata sandi salah.'],
                 ['email' => $email],
@@ -61,6 +63,21 @@ final class AuthController extends Controller
 
         if (password_needs_rehash((string) $user['password_hash'], PASSWORD_DEFAULT)) {
             User::updatePassword((int) $user['id'], $password);
+        }
+
+        if (Auth::requiresTwoFactor($user)) {
+            // Cegah session fixation sebelum sesi "setengah terautentikasi" dibuat.
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+
+            $_SESSION['_2fa_user'] = (int) $user['id'];
+            $_SESSION['_2fa_next'] = $next;
+            $_SESSION['_2fa_at'] = time();
+            $_SESSION['_2fa_tries'] = 0;
+
+            \flash('info', 'Akun ini memakai verifikasi dua langkah. Masukkan kode 6 digit dari aplikasi authenticator.');
+            $this->redirect('/two-factor');
         }
 
         Auth::clearAttempts($email);

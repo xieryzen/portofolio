@@ -51,6 +51,9 @@ $router->post('/login', [App\Controllers\AuthController::class, 'login']);
 $router->get('/register', [App\Controllers\AuthController::class, 'showRegister']);
 $router->post('/register', [App\Controllers\AuthController::class, 'register']);
 $router->post('/logout', [App\Controllers\AuthController::class, 'logout']);
+$router->get('/two-factor', [App\Controllers\TwoFactorController::class, 'show']);
+$router->post('/two-factor', [App\Controllers\TwoFactorController::class, 'verify']);
+$router->post('/two-factor/cancel', [App\Controllers\TwoFactorController::class, 'cancel']);
 
 // ---- Area user ---------------------------------------------------------
 $router->get('/dashboard', [App\Controllers\DashboardController::class, 'index']);
@@ -102,6 +105,14 @@ $router->get('/admin/settings', [App\Controllers\Admin\SettingsController::class
 $router->post('/admin/settings', [App\Controllers\Admin\SettingsController::class, 'update']);
 $router->post('/admin/settings/password', [App\Controllers\Admin\SettingsController::class, 'updatePassword']);
 $router->post('/admin/settings/test-notify', [App\Controllers\Admin\SettingsController::class, 'testNotify']);
+
+// ---- Keamanan akun & log aktivitas -------------------------------------
+$router->get('/admin/security', [App\Controllers\Admin\SecurityController::class, 'index']);
+$router->post('/admin/security/setup', [App\Controllers\Admin\SecurityController::class, 'setup']);
+$router->post('/admin/security/enable', [App\Controllers\Admin\SecurityController::class, 'enable']);
+$router->post('/admin/security/disable', [App\Controllers\Admin\SecurityController::class, 'disable']);
+$router->post('/admin/security/recovery', [App\Controllers\Admin\SecurityController::class, 'regenerate']);
+$router->get('/admin/activity', [App\Controllers\Admin\ActivityController::class, 'index']);
 
 // ---- Cadangan (backup/restore) -----------------------------------------
 $router->get('/admin/backup', [App\Controllers\Admin\BackupController::class, 'index']);

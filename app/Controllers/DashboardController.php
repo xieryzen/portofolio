@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Auth;
+use App\Models\ActivityLog;
 use App\Models\Profile;
 use App\Models\Project;
 use App\Models\Skill;
@@ -44,11 +45,14 @@ final class DashboardController extends Controller
     public function updatePassword(): void
     {
         Auth::requireLogin();
-        $user = Auth::user();
+        $sessionUser = Auth::user();
 
-        if (!$user) {
+        if (!$sessionUser) {
             $this->redirect('/login');
         }
+
+        // Auth::user() tidak memuat password_hash, jadi ambil data lengkap.
+        $user = User::find((int) $sessionUser['id']) ?? $sessionUser;
 
         $current = (string) $this->input('current_password');
         $password = (string) $this->input('password');
@@ -69,6 +73,7 @@ final class DashboardController extends Controller
         }
 
         User::updatePassword((int) $user['id'], $password);
+        ActivityLog::record('password_changed', 'Mengubah kata sandi akun', (int) $user['id'], (string) $user['email']);
         \flash('success', 'Kata sandi berhasil diperbarui.');
         $this->redirect('/profil');
     }

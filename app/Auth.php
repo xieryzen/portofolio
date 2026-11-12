@@ -84,7 +84,16 @@ final class Auth
     /**
      * @param array<string, mixed> $user
      */
-    public static function login(array $user): void
+    public static function requiresTwoFactor(array $user): bool
+    {
+        return trim((string) ($user['totp_secret'] ?? '')) !== ''
+            && trim((string) ($user['totp_enabled_at'] ?? '')) !== '';
+    }
+
+    /**
+     * @param array<string, mixed> $user
+     */
+    public static function login(array $user, string $action = 'login'): void
     {
         session_regenerate_id(true);
         $_SESSION['_auth_id'] = (int) $user['id'];
@@ -99,10 +108,30 @@ final class Auth
 
         self::$resolved = true;
         self::$user = $user;
+
+        if (class_exists(\App\Models\ActivityLog::class)) {
+            \App\Models\ActivityLog::record(
+                $action,
+                $action === 'login_2fa' ? 'Masuk dengan verifikasi 2FA' : 'Masuk ke situs',
+                (int) $user['id'],
+                (string) ($user['email'] ?? '')
+            );
+        }
     }
 
     public static function logout(bool $regenerate = true): void
     {
+        $current = self::$user;
+
+        if ($current !== null && class_exists(\App\Models\ActivityLog::class)) {
+            \App\Models\ActivityLog::record(
+                'logout',
+                'Keluar dari sesi',
+                (int) $current['id'],
+                (string) ($current['email'] ?? '')
+            );
+        }
+
         self::$user = null;
         self::$resolved = true;
 
