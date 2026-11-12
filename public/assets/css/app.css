@@ -1439,3 +1439,72 @@ table.table td.actions form { display: inline-block; }
     .release-item .release-actions { width: 100%; }
     .release-item .release-actions .btn { width: 100%; justify-content: center; }
 }
+
+/* ---------------- Efek klik: ripple, tekan, getar ---------------- */
+/* Umpan balik saat elemen interaktif ditekan */
+button, .btn, a, summary, [role="button"] { -webkit-tap-highlight-color: transparent; }
+
+.ripple-ink {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    background: currentColor;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0);
+    animation: ripple-out .62s cubic-bezier(.16, 1, .3, 1) forwards;
+}
+
+@keyframes ripple-out {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: .3; }
+    55%  { opacity: .14; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
+/* Cincin kecil di posisi kursor — terasa di klik mana pun */
+.click-spark {
+    position: fixed;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--accent) 75%, transparent);
+    pointer-events: none;
+    z-index: 9999;
+    animation: spark-out .5s ease-out forwards;
+}
+
+@keyframes spark-out {
+    from { transform: scale(.35); opacity: .85; }
+    to   { transform: scale(2.4); opacity: 0; }
+}
+
+/* Tombol terasa "turun" saat ditekan */
+.btn:active,
+button:not(:disabled):active,
+a.btn:active,
+.nav-link:active,
+.chip:active { transform: translateY(1px) scale(.985); }
+
+/* Elemen yang tidak bisa diklik */
+button[disabled],
+input[disabled],
+select[disabled],
+textarea[disabled],
+a.is-disabled,
+.is-unclickable {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Getaran singkat saat aksi ditolak */
+.shake { animation: shake-x .45s cubic-bezier(.36, .07, .19, .97) both; }
+
+@keyframes shake-x {
+    0%, 100% { transform: translateX(0); }
+    12% { transform: translateX(-7px) rotate(-.5deg); }
+    28% { transform: translateX(6px) rotate(.5deg); }
+    44% { transform: translateX(-5px); }
+    58% { transform: translateX(4px); }
+    72% { transform: translateX(-3px); }
+    86% { transform: translateX(2px); }
+}
