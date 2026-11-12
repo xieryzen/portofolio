@@ -31,6 +31,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
     <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('icons/favicon-32.png')) ?>">
     <link rel="apple-touch-icon" href="<?= e(asset('icons/apple-touch-icon.png')) ?>">
     <link rel="manifest" href="<?= e(asset('manifest.webmanifest')) ?>">
+    <link rel="alternate" type="application/rss+xml" title="<?= e($siteTitle) ?> — RSS" href="<?= e(absolute_url('/feed.xml')) ?>">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="<?= e($siteTitle) ?>">
     <?php

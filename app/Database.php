@@ -16,7 +16,7 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
-    private const SCHEMA_VERSION = '4';
+    private const SCHEMA_VERSION = '5';
 
     public static function connection(): PDO
     {
@@ -232,6 +232,24 @@ final class Database
             created_at VARCHAR(25) NOT NULL
         )$suffix";
 
+        $tables[] = "CREATE TABLE IF NOT EXISTS posts (
+            id $id,
+            title VARCHAR(180) NOT NULL,
+            slug VARCHAR(200) NOT NULL UNIQUE,
+            excerpt VARCHAR(300) NOT NULL DEFAULT '',
+            content TEXT NULL,
+            category VARCHAR(80) NOT NULL DEFAULT 'Artikel',
+            tags VARCHAR(200) NOT NULL DEFAULT '',
+            cover VARCHAR(190) NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'draft',
+            is_featured TINYINT(1) NOT NULL DEFAULT 0,
+            reading_minutes INT NOT NULL DEFAULT 0,
+            views INT NOT NULL DEFAULT 0,
+            published_at VARCHAR(25) NULL,
+            created_at VARCHAR(25) NOT NULL,
+            updated_at VARCHAR(25) NOT NULL
+        )$suffix";
+
         $tables[] = "CREATE TABLE IF NOT EXISTS visits (
             id $id,
             path VARCHAR(190) NOT NULL,
@@ -271,6 +289,7 @@ final class Database
             self::createIndexIfMissing($pdo, 'login_attempts', 'idx_login_attempts_email', 'email');
             self::createIndexIfMissing($pdo, 'activity_logs', 'idx_activity_logs_created', 'created_at');
             self::createIndexIfMissing($pdo, 'visits', 'idx_visits_created', 'created_at');
+            self::createIndexIfMissing($pdo, 'posts', 'idx_posts_status', 'status');
         } else {
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_images_project ON project_images (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_releases_project ON project_releases (project_id)');
@@ -279,6 +298,7 @@ final class Database
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (email)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs (created_at)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_visits_created ON visits (created_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_status ON posts (status)');
         }
 
         self::seed($pdo);

@@ -1835,3 +1835,37 @@ h1, h2, h3, p, li, th, td, .release-notes, .detail-body, .toast { overflow-wrap:
 @media (max-width: 900px) {
     .header-actions > .lang-switch { display: none; }
 }
+
+/* ==========================================================================
+   Blog / artikel
+   ========================================================================== */
+
+.post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-top: 16px;
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.post-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.post-card .project-body p {
+    min-height: 2.6em;
+}
+
+.chip.is-active {
+    background: var(--accent);
+    color: #08101f;
+    border-color: transparent;
+}
+
+[data-theme="light"] .chip.is-active { color: #06122a; }
+
+.chips a.chip:hover { border-color: var(--accent); color: var(--text); }

@@ -29,6 +29,7 @@ $cvUrl = setting('cv_file', '') !== '' ? app_url('/cv') : null;
             <nav class="site-nav" aria-label="<?= e(t('nav.main')) ?>">
                 <a href="<?= e(app_url('/')) ?>" class="<?= $isHome ? 'is-active' : '' ?>"><?= e(t('nav.home')) ?></a>
                 <a href="<?= e(app_url('/#karya')) ?>"><?= e(t('nav.work')) ?></a>
+                <a href="<?= e(app_url('/blog')) ?>" class="<?= str_starts_with(current_path(), '/blog') ? 'is-active' : '' ?>"><?= e(t('nav.blog')) ?></a>
                 <a href="<?= e(app_url('/#tentang')) ?>"><?= e(t('nav.about')) ?></a>
                 <?php if (!empty($hasGallery)): ?>
                     <a href="<?= e(app_url('/#dokumentasi')) ?>"><?= e(t('nav.gallery')) ?></a>
@@ -80,6 +81,7 @@ $cvUrl = setting('cv_file', '') !== '' ? app_url('/cv') : null;
         <div class="container">
             <a href="<?= e(app_url('/')) ?>"><?= e(t('nav.home')) ?> <?= svg_icon('arrow-right', 'icon-sm') ?></a>
             <a href="<?= e(app_url('/#karya')) ?>"><?= e(t('nav.work')) ?> <?= svg_icon('arrow-right', 'icon-sm') ?></a>
+            <a href="<?= e(app_url('/blog')) ?>"><?= e(t('nav.blog')) ?> <?= svg_icon('arrow-right', 'icon-sm') ?></a>
             <a href="<?= e(app_url('/#tentang')) ?>"><?= e(t('nav.about')) ?> <?= svg_icon('arrow-right', 'icon-sm') ?></a>
             <?php if (!empty($hasGallery)): ?>
                 <a href="<?= e(app_url('/#dokumentasi')) ?>"><?= e(t('nav.gallery')) ?> <?= svg_icon('arrow-right', 'icon-sm') ?></a>
