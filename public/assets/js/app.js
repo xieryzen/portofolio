@@ -17,12 +17,35 @@
     const navToggle = $('[data-nav-toggle]');
     const mobileNav = $('[data-mobile-nav]');
     if (navToggle && mobileNav) {
-        navToggle.addEventListener('click', () => {
-            const open = mobileNav.classList.toggle('is-open');
+        const setOpen = (open) => {
+            mobileNav.classList.toggle('is-open', open);
             navToggle.setAttribute('aria-expanded', String(open));
+            navToggle.setAttribute('aria-label', open ? 'Tutup menu' : 'Buka menu');
             navToggle.innerHTML = open
                 ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'
                 : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>';
+        };
+
+        navToggle.addEventListener('click', () => setOpen(!mobileNav.classList.contains('is-open')));
+
+        // Tutup setelah memilih tautan, saat menekan Escape, atau klik di luar panel.
+        mobileNav.addEventListener('click', (event) => {
+            if (event.target instanceof Element && event.target.closest('a')) setOpen(false);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && mobileNav.classList.contains('is-open')) {
+                setOpen(false);
+                navToggle.focus();
+            }
+        });
+
+        document.addEventListener('pointerdown', (event) => {
+            if (!mobileNav.classList.contains('is-open')) return;
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (mobileNav.contains(target) || navToggle.contains(target)) return;
+            setOpen(false);
         });
     }
 

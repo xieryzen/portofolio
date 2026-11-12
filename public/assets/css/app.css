@@ -1508,3 +1508,105 @@ a.is-disabled,
     72% { transform: translateX(-3px); }
     86% { transform: translateX(2px); }
 }
+
+/* ============================================================
+   Penyempurnaan responsif — HP kecil, tablet, laptop, layar lebar
+   ============================================================ */
+
+/* Konten panjang tidak boleh memaksa halaman melebar (scroll horizontal) */
+img, video, canvas, iframe, svg { max-width: 100%; }
+.project-card, .card, .release-item, .release-main, .form-card,
+.auth-card, .admin-content, .detail-body, .about-text { min-width: 0; }
+h1, h2, h3, p, li, th, td, .release-notes, .detail-body, .toast { overflow-wrap: break-word; }
+.release-notes, .detail-body, .about-text, .lead, .project-card p { overflow-wrap: anywhere; }
+
+/* Anchor (#rilis, #kontak, ...) tidak tertutup header sticky */
+[id] { scroll-margin-top: calc(var(--header-h) + 18px); }
+
+/* Tabel admin: gulir horizontal yang nyaman di layar sentuh */
+.table-wrap {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+.table-wrap::-webkit-scrollbar { height: 8px; }
+.table-wrap::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; }
+
+/* Tinggi viewport dinamis untuk browser HP (address bar naik-turun) */
+.mobile-nav { max-height: calc(100dvh - var(--header-h)); overflow-y: auto; overscroll-behavior: contain; }
+.lightbox { height: 100dvh; }
+
+/* Laptop & layar lebar: ruang napas ekstra, baris teks tetap terbaca */
+@media (min-width: 1440px) {
+    :root { --container: 1240px; }
+    .section { padding: 108px 0; }
+    .hero { padding: 88px 0 74px; }
+}
+
+@media (min-width: 1800px) {
+    :root { --container: 1320px; }
+    .hero-grid { gap: 76px; }
+}
+
+/* Tablet lebar: panel samping detail tetap dua kolom */
+@media (min-width: 901px) and (max-width: 1024px) {
+    .detail-side { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Ponsel (≤640px) */
+@media (max-width: 640px) {
+    .input, .select, .textarea { font-size: 16px; } /* cegah auto-zoom iOS */
+    .hero h1 { font-size: clamp(1.9rem, 8vw, 2.6rem); }
+    .hero { padding: 28px 0 44px; }
+    .section { padding: 56px 0; }
+
+    /* Target sentuh minimal 44px */
+    .icon-btn, .nav-toggle, .pagination a, .pagination span { min-width: 44px; min-height: 44px; }
+    .pagination a, .pagination span { display: inline-grid; place-items: center; }
+
+    .btn { padding: 12px 18px; }
+    table.table { font-size: 13px; }
+    table.table th, table.table td { padding: 11px 12px; }
+    .site-header { backdrop-filter: blur(10px); }
+    .orb, .float-card { animation: none; } /* hemat baterai di HP */
+}
+
+/* Ponsel kecil (≤420px) */
+@media (max-width: 420px) {
+    :root { --header-h: 64px; }
+    .container { padding-inline: 14px; }
+    .hero-actions { flex-direction: column; align-items: stretch; }
+    .hero-actions .btn { width: 100%; justify-content: center; }
+    .hero-visual { min-height: 250px; }
+    .float-card { display: none; }
+    .stats-strip { grid-template-columns: 1fr; }
+    .release-actions .btn,
+    .release-actions form,
+    .release-actions button { width: 100%; }
+    .header-actions .btn { padding: 10px 14px; font-size: 13.5px; }
+    .brand span { max-width: 148px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* HP landscape: hero dipadatkan agar konten tetap terlihat */
+@media (max-height: 520px) and (orientation: landscape) {
+    .hero { padding-top: 24px; padding-bottom: 32px; }
+    .hero-visual { min-height: 210px; }
+    .orb { width: min(200px, 42vh); }
+    .float-card { display: none; }
+}
+
+/* Perangkat sentuh: hover yang "nyangkut" dimatikan */
+@media (hover: none) {
+    .btn:hover, .project-card:hover, .doc-item:hover, .release-item:hover { transform: none; }
+    table.table tbody tr:hover { background: transparent; }
+}
+
+/* Cetak halaman */
+@media print {
+    .site-header, .site-footer, .mobile-nav, .toast-stack, .no-print,
+    .admin-sidebar, .admin-topbar, .hero-actions, .release-actions { display: none !important; }
+    body { background: #fff; color: #111; }
+    .card, .project-card, .release-item, .stat, .form-card { background: #fff; border-color: #ccc; box-shadow: none; }
+    .admin-main { margin: 0; }
+    a[href]::after { content: " (" attr(href) ")"; font-size: 11px; color: #555; }
+}
