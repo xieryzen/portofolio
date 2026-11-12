@@ -6,6 +6,7 @@
 /** @var list<array<string, mixed>> $gallery */
 /** @var array<string, list<array<string, mixed>>> $skills */
 /** @var array<string, mixed>|null $authUser */
+/** @var list<array<string, mixed>> $latestPosts */
 
 use App\View;
 
@@ -224,6 +225,28 @@ $others = $isSearching
         <div class="project-grid">
             <?php foreach ($others as $project): ?>
                 <?= View::partial('partials/project-card', ['project' => $project]) ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
+
+<!-- ============ ARTIKEL ============ -->
+<?php $latestPosts = $latestPosts ?? []; ?>
+<?php if ($latestPosts !== []): ?>
+<section class="section-sm" id="artikel">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="section-label"><?= e(t('nav.blog')) ?></span>
+                <h2 class="section-title" style="font-size:clamp(1.5rem,2.6vw,2.1rem)"><?= e(t('blog.latest')) ?></h2>
+                <p class="section-desc"><?= e(t('blog.latest_desc')) ?></p>
+            </div>
+            <a class="link-arrow" href="<?= e(app_url('/blog')) ?>"><?= e(t('blog.view_all')) ?> <?= svg_icon('arrow-right') ?></a>
+        </div>
+        <div class="project-grid">
+            <?php foreach ($latestPosts as $post): ?>
+                <?= View::partial('partials/post-card', ['post' => $post]) ?>
             <?php endforeach; ?>
         </div>
     </div>

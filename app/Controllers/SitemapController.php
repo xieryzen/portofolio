@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Models\Post;
 use App\Models\Project;
 
 /**
@@ -14,6 +15,7 @@ final class SitemapController extends Controller
     public function index(): void
     {
         $projects = Project::published(500);
+        $posts = Post::latest(500);
 
         $urls = [[
             'loc' => absolute_url('/'),
@@ -22,6 +24,15 @@ final class SitemapController extends Controller
             'changefreq' => 'weekly',
         ]];
 
+        if ($posts !== []) {
+            $urls[] = [
+                'loc' => absolute_url('/blog'),
+                'lastmod' => date('Y-m-d'),
+                'priority' => '0.7',
+                'changefreq' => 'weekly',
+            ];
+        }
+
         foreach ($projects as $project) {
             $updated = (string) ($project['updated_at'] ?? '');
 
@@ -29,6 +40,17 @@ final class SitemapController extends Controller
                 'loc' => absolute_url('/project/' . $project['slug']),
                 'lastmod' => $updated !== '' ? substr($updated, 0, 10) : date('Y-m-d'),
                 'priority' => '0.8',
+                'changefreq' => 'monthly',
+            ];
+        }
+
+        foreach ($posts as $post) {
+            $updated = (string) ($post['updated_at'] ?? '');
+
+            $urls[] = [
+                'loc' => absolute_url('/blog/' . $post['slug']),
+                'lastmod' => $updated !== '' ? substr($updated, 0, 10) : date('Y-m-d'),
+                'priority' => '0.6',
                 'changefreq' => 'monthly',
             ];
         }

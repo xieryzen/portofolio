@@ -29,6 +29,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
   preferensi bahasa, dan tag `hreflang`.
 - **Tombol Unduh CV** otomatis muncul di hero, navbar, dan menu HP setelah PDF diunggah dari panel.
 - **Halaman studi kasus** per project: tantangan, solusi, hasil, dan kartu metrik.
+- **Blog/artikel**: daftar artikel dengan pencarian & kategori, halaman detail dengan cover,
+  estimasi waktu baca, tag, artikel terkait, feed **RSS** (`/feed.xml`), dan entri sitemap otomatis.
 - **SEO**: `sitemap.xml` dinamis (beranda + semua project terbit) dan `robots.txt` yang menunjuk sitemap.
 - **PWA**: bisa dipasang ke home screen (Android/iOS), aset di-cache service worker, dan ada
   halaman `/offline` saat koneksi putus. Area admin & unduhan tidak pernah di-cache.
@@ -61,6 +63,7 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - **CV (PDF)**: unggah/ganti/hapus CV dari halaman Profil.
 - **Studi kasus**: tiga blok teks + metrik per project dari form project.
 - **Statistik kunjungan**: grafik 14 hari, halaman populer, dan sumber kunjungan tanpa data pribadi.
+- **Artikel**: CRUD blog dengan draft/publik, cover (otomatis WebP), kategori, tag, dan penanda pilihan.
 - **Keamanan akun**: aktifkan/nonaktifkan 2FA, lihat sisa kode pemulihan, buat ulang kode pemulihan.
 - **Log aktivitas**: 40 entri terbaru per halaman dengan waktu, akun, aksi, keterangan, dan alamat IP.
 
@@ -379,6 +382,29 @@ kamus antarmuka ada di `lang/id.php` dan `lang/en.php` bila ingin menyesuaikan t
 
 ---
 
+## 📝 Blog / artikel
+
+Artikel dikelola dari **Admin → Artikel** (`/admin/posts`):
+
+- Tulis judul, ringkasan, konten (teks biasa, paragraf dipisah baris kosong), kategori, dan tag.
+- Simpan sebagai **Draft** dulu, lalu ubah ke **Publik** saat siap. Tanggal publikasi diisi otomatis
+  saat pertama kali diterbitkan; draft tidak muncul di halaman publik, sitemap, maupun RSS.
+- Cover opsional (JPG/PNG/WEBP/GIF) — otomatis diperkecil & dikonversi ke WebP seperti gambar lain.
+- Estimasi waktu baca dihitung dari jumlah kata (~200 kata/menit), jumlah dilihat dihitung otomatis.
+
+Halaman publik:
+
+| URL | Isi |
+| --- | ----------- |
+| `/blog` | Daftar artikel + pencarian `?q=` dan filter kategori `?kategori=` |
+| `/blog/{slug}` | Detail artikel + tag + artikel terkait |
+| `/feed.xml` | RSS 2.0 (20 artikel terbaru) |
+
+Artikel terbit otomatis masuk ke `sitemap.xml`, dan tiga artikel terbaru tampil di beranda
+(bagian **Artikel terbaru**). Semua label antarmuka blog tersedia dalam ID/EN.
+
+---
+
 ## 🔒 Verifikasi dua langkah (2FA)
 
 2FA bersifat opsional dan diatur per akun (owner maupun admin) lewat **/admin/security**.
@@ -462,6 +488,9 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/media/{file}` | publik | Gambar upload (validasi nama & tipe) |
 | `/manifest.webmanifest` | publik | Manifest PWA (nama, ikon, warna tema) |
 | `/sw.js` | publik | Service worker (cache app shell) |
+| `/blog` | publik | Daftar artikel blog (cari & filter kategori) |
+| `/blog/{slug}` | publik | Detail artikel |
+| `/feed.xml` | publik | Feed RSS artikel |
 | `/offline` | publik | Halaman cadangan saat offline |
 | `/cv` | publik* | Unduh CV PDF (*bila sudah diunggah) |
 | `/sitemap.xml` | publik | Sitemap dinamis untuk mesin pencari |
@@ -473,6 +502,7 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/profil` | user | Akun & ganti kata sandi |
 | `/admin` | owner/admin | Ringkasan panel |
 | `/admin/profile` | owner/admin | Nama, deskripsi, avatar, cover, kontak |
+| `/admin/posts` | owner/admin | Kelola artikel blog (draft/publik) |
 | `/admin/projects` | owner/admin | CRUD project, cover, dokumentasi |
 | `/admin/projects/{id}/releases` | owner/admin | Tambah rilis project + unggah file |
 | `/admin/releases/{id}` | owner/admin | Edit rilis, ganti file, publikasi, hapus |
@@ -518,9 +548,9 @@ pull request:
 1. `php -l` untuk semua file PHP,
 2. migrasi + seed database SQLite baru, cek CLI (`user:list`, `stats`),
 3. uji TOTP/base32 dan kode pemulihan,
-4. menyalakan `php -S` memakai `router.php` lalu memeriksa `/`, `/login`, `/offline`,
-   `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`, halaman project (ID & EN), dan
-   memastikan `/admin` tetap terlindungi,
+4. menyalakan `php -S` memakai `router.php` lalu memeriksa `/`, `/?lang=en`, `/login`, `/offline`,
+   `/blog`, `/blog?lang=en`, `/feed.xml`, `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`,
+   halaman project (ID & EN), dan memastikan `/admin` tetap terlindungi,
 5. gagal bila ada `PHP Warning`/`Fatal error` di log server.
 
 Jalankan lokal dengan perintah yang sama seperti di workflow, atau minimal:
@@ -540,7 +570,7 @@ app/                 kode inti (Config, Database, Auth, Router, Validator, Uploa
 lang/                kamus antarmuka publik (id.php, en.php)
 bin/console          utilitas CLI
 public/              document root: index.php, assets, .htaccess
-views/               template (layout, halaman publik, admin, auth, error)
+views/               template (layout, halaman publik, blog, admin, auth, error)
 storage/             database SQLite, upload gambar, file rilis, sesi, log  ← WAJIB writable, tidak masuk Git
 deploy/              egg Pterodactyl, contoh nginx, Dockerfile
 router.php           router untuk PHP built-in server
@@ -570,6 +600,7 @@ dan hanya bisa diunduh lewat route `/download/{id}` yang mengecek status publika
 - Log aktivitas tidak pernah menyimpan kata sandi, kode 2FA, atau isi pesan.
 - CV divalidasi MIME PDF + signature `%PDF-`, disimpan di luar document root.
 - Statistik kunjungan tidak menyimpan IP, cookie, atau user-agent lengkap.
+- Konten artikel disimpan sebagai teks dan di-escape saat ditampilkan (tidak ada HTML mentah).
 - Gambar dikonversi ulang lewat GD (bukan mengeksekusi file), nama file selalu diacak.
 - Semua output user di-escape dengan `e()`.
 - Jangan set `APP_DEBUG=true` di produksi dan jangan bagikan `.env`.

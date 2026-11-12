@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Models\Post;
 use App\Models\Profile;
 use App\Models\Project;
 use App\Models\Release;
@@ -40,6 +41,7 @@ final class HomeController extends Controller
             'skills' => Skill::grouped(),
             'stats' => $stats,
             'gallery' => Project::galleryImages(8),
+            'latestPosts' => Post::latest(3),
             'metaDescription' => setting('meta_description', ''),
             'searchTerm' => $searchTerm,
         ]);

@@ -37,6 +37,9 @@ $router = new Router();
 // ---- Halaman publik ----------------------------------------------------
 $router->get('/', [App\Controllers\HomeController::class, 'index']);
 $router->get('/project/{slug}', [App\Controllers\HomeController::class, 'show']);
+$router->get('/blog', [App\Controllers\BlogController::class, 'index']);
+$router->get('/blog/{slug}', [App\Controllers\BlogController::class, 'show']);
+$router->get('/feed.xml', [App\Controllers\FeedController::class, 'index']);
 $router->get('/media/{file}', [App\Controllers\MediaController::class, 'show']);
 $router->get('/download/{id}', [App\Controllers\DownloadController::class, 'file']);
 $router->post('/contact', [App\Controllers\ContactController::class, 'store']);
@@ -69,6 +72,14 @@ $router->post('/admin/profile/image', [App\Controllers\Admin\ProfileController::
 $router->post('/admin/profile/cv', [App\Controllers\Admin\ProfileController::class, 'uploadCv']);
 $router->post('/admin/profile/cv/delete', [App\Controllers\Admin\ProfileController::class, 'deleteCv']);
 $router->post('/admin/profile/image/remove', [App\Controllers\Admin\ProfileController::class, 'removeImage']);
+
+$router->get('/admin/posts', [App\Controllers\Admin\PostController::class, 'index']);
+$router->get('/admin/posts/create', [App\Controllers\Admin\PostController::class, 'create']);
+$router->post('/admin/posts', [App\Controllers\Admin\PostController::class, 'store']);
+$router->get('/admin/posts/{id}/edit', [App\Controllers\Admin\PostController::class, 'edit']);
+$router->post('/admin/posts/{id}', [App\Controllers\Admin\PostController::class, 'update']);
+$router->post('/admin/posts/{id}/delete', [App\Controllers\Admin\PostController::class, 'destroy']);
+$router->post('/admin/posts/{id}/cover/delete', [App\Controllers\Admin\PostController::class, 'removeCover']);
 
 $router->get('/admin/projects', [App\Controllers\Admin\ProjectController::class, 'index']);
 $router->get('/admin/projects/create', [App\Controllers\Admin\ProjectController::class, 'create']);
