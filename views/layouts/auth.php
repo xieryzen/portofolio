@@ -26,6 +26,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
     <meta name="theme-color" content="#060a14">
     <meta name="color-scheme" content="dark">
     <link rel="icon" href="<?= e($favicon) ?>">
+    <script src="<?= e(asset('assets/js/theme.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">
 </head>
 <body>

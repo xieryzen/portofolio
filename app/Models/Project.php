@@ -23,6 +23,40 @@ final class Project
     }
 
     /**
+     * Cari project yang sudah terbit berdasarkan judul, ringkasan, kategori, atau tech stack.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function searchPublished(string $term, int $limit = 60): array
+    {
+        $term = trim($term);
+
+        if ($term === '') {
+            return self::published($limit);
+        }
+
+        $like = '%' . $term . '%';
+        $statement = Database::connection()->prepare(
+            'SELECT * FROM projects
+             WHERE status = :status
+               AND (title LIKE :q1 OR summary LIKE :q2 OR description LIKE :q3 OR category LIKE :q4 OR tech_stack LIKE :q5)
+             ORDER BY is_featured DESC, sort_order ASC, id DESC
+             LIMIT ' . max(1, min($limit, 200))
+        );
+
+        $statement->execute([
+            'status' => 'published',
+            'q1' => $like,
+            'q2' => $like,
+            'q3' => $like,
+            'q4' => $like,
+            'q5' => $like,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     public static function featured(int $limit = 3): array

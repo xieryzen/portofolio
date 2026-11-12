@@ -52,6 +52,11 @@ $isHome = current_path() === '/';
                     <?php endif; ?>
                 <?php endif; ?>
 
+                <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Ganti tema" title="Ganti tema">
+                    <span class="theme-icon theme-icon-moon"><?= svg_icon('moon') ?></span>
+                    <span class="theme-icon theme-icon-sun"><?= svg_icon('sun') ?></span>
+                </button>
+
                 <button class="nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="mobile-nav" aria-label="Buka menu">
                     <?= svg_icon('menu') ?>
                 </button>

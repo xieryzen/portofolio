@@ -43,6 +43,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
         <meta property="og:image" content="<?= e($ogImage) ?>">
         <meta name="twitter:image" content="<?= e($ogImage) ?>">
     <?php endif; ?>
+    <script src="<?= e(asset('assets/js/theme.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">
 </head>
 <body>

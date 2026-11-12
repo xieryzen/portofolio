@@ -27,8 +27,19 @@ foreach ($skills as $group) {
         $allSkills[] = $skill;
     }
 }
+$searchTerm = trim((string) ($searchTerm ?? ''));
+$isSearching = $searchTerm !== '';
+
+if ($isSearching) {
+    // Saat mencari, semua hasil ditampilkan dalam satu grid.
+    $featured = $projects;
+    $others = [];
+}
+
 $featuredIds = array_map(static fn (array $p): int => (int) $p['id'], $featured);
-$others = array_values(array_filter($projects, static fn (array $p): bool => !in_array((int) $p['id'], $featuredIds, true)));
+$others = $isSearching
+    ? []
+    : array_values(array_filter($projects, static fn (array $p): bool => !in_array((int) $p['id'], $featuredIds, true)));
 ?>
 
 <!-- ============ HERO ============ -->
@@ -146,20 +157,44 @@ $others = array_values(array_filter($projects, static fn (array $p): bool => !in
         <div class="section-head">
             <div>
                 <span class="section-label">Portofolio</span>
-                <h2 class="section-title">Karya pilihan</h2>
-                <p class="section-desc">Kumpulan project yang saya kerjakan — lengkap dengan cerita, peran, dan dokumentasinya.</p>
+                <h2 class="section-title"><?= $isSearching ? 'Hasil pencarian' : 'Karya pilihan' ?></h2>
+                <p class="section-desc">
+                    <?php if ($isSearching): ?>
+                        <?= count($projects) ?> project cocok dengan “<?= e($searchTerm) ?>”.
+                    <?php else: ?>
+                        Kumpulan project yang saya kerjakan — lengkap dengan cerita, peran, dan dokumentasinya.
+                    <?php endif; ?>
+                </p>
             </div>
             <?php if ($others !== []): ?>
                 <a class="link-arrow" href="#semua-karya">Semua project <?= svg_icon('arrow-right') ?></a>
             <?php endif; ?>
         </div>
 
+        <form class="project-search" method="get" action="<?= e(app_url('/')) ?>#karya" role="search">
+            <div class="input-group">
+                <?= svg_icon('search') ?>
+                <input class="input" type="search" name="q" value="<?= e($searchTerm) ?>"
+                       placeholder="Cari project, teknologi, atau kategori…" maxlength="80" aria-label="Cari project">
+            </div>
+            <button class="btn btn-primary" type="submit">Cari</button>
+            <?php if ($isSearching): ?>
+                <a class="btn btn-ghost" href="<?= e(app_url('/')) ?>#karya">Reset</a>
+            <?php endif; ?>
+        </form>
+
         <?php if ($projects === []): ?>
             <div class="card">
                 <div class="empty-state">
-                    <?= svg_icon('folder') ?>
-                    <h3>Belum ada project</h3>
-                    <p>Project yang ditambahkan dari panel admin akan tampil di sini.</p>
+                    <?= svg_icon($isSearching ? 'search' : 'folder') ?>
+                    <h3><?= $isSearching ? 'Tidak ada project yang cocok' : 'Belum ada project' ?></h3>
+                    <p>
+                        <?php if ($isSearching): ?>
+                            Coba kata kunci lain, misalnya nama teknologi atau kategori.
+                        <?php else: ?>
+                            Project yang ditambahkan dari panel admin akan tampil di sini.
+                        <?php endif; ?>
+                    </p>
                 </div>
             </div>
         <?php else: ?>

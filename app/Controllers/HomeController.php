@@ -14,7 +14,13 @@ final class HomeController extends Controller
     public function index(): void
     {
         $profile = Profile::get();
-        $projects = Project::published(60);
+
+        $searchTerm = trim((string) ($_GET['q'] ?? ''));
+        $searchTerm = mb_substr(preg_replace('~\s+~u', ' ', $searchTerm) ?? '', 0, 80, 'UTF-8');
+
+        $projects = $searchTerm !== ''
+            ? Project::searchPublished($searchTerm, 60)
+            : Project::published(60);
         $featured = array_values(array_filter($projects, static fn (array $p): bool => (int) $p['is_featured'] === 1));
 
         if ($featured === []) {
@@ -32,6 +38,7 @@ final class HomeController extends Controller
             'stats' => $stats,
             'gallery' => Project::galleryImages(8),
             'metaDescription' => setting('meta_description', ''),
+            'searchTerm' => $searchTerm,
         ]);
     }
 
