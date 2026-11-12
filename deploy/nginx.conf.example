@@ -1,0 +1,41 @@
+# Contoh konfigurasi Nginx + PHP-FPM untuk VPS
+# DocumentRoot WAJIB mengarah ke folder public/
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name portofolio.example.com;
+
+    root /var/www/portofolio/public;
+    index index.php;
+
+    charset utf-8;
+    client_max_body_size 8M;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 120;
+    }
+
+    # Jangan pernah menyajikan file tersembunyi
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Cache aset statis
+    location ~* \.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?)$ {
+        expires 30d;
+        access_log off;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+}

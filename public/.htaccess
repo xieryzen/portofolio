@@ -1,0 +1,28 @@
+# ==========================================================
+#  Konfigurasi Apache (opsional)
+#  Paling aman: arahkan DocumentRoot ke folder public/ ini.
+# ==========================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Jika aplikasi dipasang di sub-folder, sesuaikan RewriteBase.
+    # RewriteBase /
+
+    # Jangan rewrite file/folder yang benar-benar ada.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Blokir akses file tersembunyi (.env, .git, dll)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+DirectoryIndex index.php
+Options -Indexes
