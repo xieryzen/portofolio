@@ -229,4 +229,134 @@
 
         counters.forEach((el) => counterObserver.observe(el));
     }
+    /* ---------- Efek klik: ripple, spark, dan getar ---------- */
+    const reduceMotion = typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : { matches: false };
+    const CLICKABLE = 'a[href], button, [role="button"], .btn, .chip, .doc-item, .project-card, summary, .nav-link, .social-link, .filter-btn';
+    const BLOCKED = '[aria-disabled="true"], .is-disabled, [data-blocked], button[disabled], input[disabled], select[disabled], textarea[disabled]';
+
+    const shake = (el) => {
+        if (!el || !(el instanceof Element)) return;
+        el.classList.remove('shake');
+        void el.offsetWidth; // paksa reflow agar animasi bisa diputar ulang
+        el.classList.add('shake');
+        el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+    };
+
+    const rippleAt = (el, x, y) => {
+        if (reduceMotion.matches || el.dataset.noRipple !== undefined) return;
+
+        const rect = el.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+
+        const size = Math.max(rect.width, rect.height) * 2.2;
+        const restorePosition = el.style.position;
+        const restoreOverflow = el.style.overflow;
+
+        if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        el.style.overflow = 'hidden';
+
+        const ink = document.createElement('span');
+        ink.className = 'ripple-ink';
+        ink.setAttribute('aria-hidden', 'true');
+        ink.style.width = size + 'px';
+        ink.style.height = size + 'px';
+        ink.style.left = (x - rect.left) + 'px';
+        ink.style.top = (y - rect.top) + 'px';
+        el.appendChild(ink);
+
+        const cleanup = () => {
+            if (!ink.isConnected) return;
+            ink.remove();
+            el.style.position = restorePosition;
+            el.style.overflow = restoreOverflow;
+        };
+
+        ink.addEventListener('animationend', cleanup, { once: true });
+        setTimeout(cleanup, 900);
+    };
+
+    const sparkAt = (x, y) => {
+        if (reduceMotion.matches) return;
+
+        const spark = document.createElement('span');
+        spark.className = 'click-spark';
+        spark.setAttribute('aria-hidden', 'true');
+        spark.style.left = x + 'px';
+        spark.style.top = y + 'px';
+        document.body.appendChild(spark);
+        spark.addEventListener('animationend', () => spark.remove(), { once: true });
+        setTimeout(() => spark.remove(), 900);
+    };
+
+    document.addEventListener('pointerdown', (event) => {
+        if (event.button > 0) return;
+
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) return;
+
+        const blocked = target.closest(BLOCKED);
+        if (blocked) {
+            shake(blocked);
+            return;
+        }
+
+        const clickable = target.closest(CLICKABLE);
+        if (clickable && !clickable.matches('input, select, textarea, option, label')) {
+            rippleAt(clickable, event.clientX, event.clientY);
+        }
+
+        // Kolom isian tidak perlu cincin klik — terlalu ramai saat mengetik.
+        const isField = target.closest('input, textarea, select, label, .field');
+        if (!clickable && !isField) sparkAt(event.clientX, event.clientY);
+    }, { capture: true, passive: true });
+
+    /* Tombol native `disabled` tidak menerima event, jadi dengarkan dari induknya. */
+    const bindBlockedButtons = () => {
+        $$('button[disabled], input[type="submit"][disabled], a.is-disabled, .is-unclickable').forEach((el) => {
+            if (el.dataset.shakeReady === '1') return;
+            el.dataset.shakeReady = '1';
+
+            const host = el.parentElement;
+            if (!host) return;
+
+            host.addEventListener('pointerdown', (event) => {
+                const rect = el.getBoundingClientRect();
+                const inside = event.clientX >= rect.left && event.clientX <= rect.right
+                    && event.clientY >= rect.top && event.clientY <= rect.bottom;
+
+                if (inside) shake(el);
+            }, { passive: true });
+        });
+    };
+
+    bindBlockedButtons();
+
+    if ('MutationObserver' in window) {
+        let queued = false;
+        const observer = new MutationObserver(() => {
+            if (queued) return;
+            queued = true;
+            requestAnimationFrame(() => {
+                queued = false;
+                bindBlockedButtons();
+            });
+        });
+        observer.observe(document.body, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['disabled', 'class'],
+        });
+    }
+
+    /* Validasi form bawaan browser: kolom yang tidak valid ikut bergetar. */
+    document.addEventListener('invalid', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+
+        const field = target.closest('.field, .form-row') || target;
+        shake(field);
+    }, true);
 })();

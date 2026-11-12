@@ -20,7 +20,9 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - **Rilis & unduhan per project**: riwayat versi, catatan perubahan (changelog), file unduhan, ukuran, jumlah unduhan, dan penanda versi terbaru.
 - Bagian "Tentang" berisi deskripsi panjang dan bar keahlian per kategori.
 - Formulir kontak yang tersimpan ke panel admin (dengan honeypot + anti-spam).
-- Responsif penuh, tema gelap, animasi halus, mendukung `prefers-reduced-motion`.
+- Responsif penuh, tema gelap, animasi halus: konten muncul berurutan saat scroll, ripple saat
+  elemen diklik, tombol non-aktif bergetar, dan cincin kecil pada klik di area kosong.
+  Semua animasi menghormati `prefers-reduced-motion`.
 
 **Akun**
 - Register user (bisa dimatikan), login, logout, ganti kata sandi, halaman dashboard user.
