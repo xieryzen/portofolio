@@ -26,7 +26,8 @@ final class Post
         }
 
         if ($search !== '') {
-            $where[] = '(title LIKE :q1 OR excerpt LIKE :q2 OR content LIKE :q3 OR tags LIKE :q4)';
+            $where[] = '(title LIKE :q1 OR excerpt LIKE :q2 OR content LIKE :q3 OR tags LIKE :q4
+                         OR title_en LIKE :q1 OR excerpt_en LIKE :q2 OR content_en LIKE :q3)';
             $like = '%' . $search . '%';
             $params += ['q1' => $like, 'q2' => $like, 'q3' => $like, 'q4' => $like];
         }
@@ -140,10 +141,12 @@ final class Post
             : null;
 
         $statement = Database::connection()->prepare(
-            'INSERT INTO posts (title, slug, excerpt, content, category, tags, cover, status, is_featured,
-                reading_minutes, views, published_at, created_at, updated_at)
-             VALUES (:title, :slug, :excerpt, :content, :category, :tags, :cover, :status, :is_featured,
-                :reading_minutes, 0, :published_at, :created_at, :updated_at)'
+            'INSERT INTO posts (title, slug, excerpt, content, category, tags,
+                title_en, excerpt_en, content_en,
+                cover, status, is_featured, reading_minutes, views, published_at, created_at, updated_at)
+             VALUES (:title, :slug, :excerpt, :content, :category, :tags,
+                :title_en, :excerpt_en, :content_en,
+                :cover, :status, :is_featured, :reading_minutes, 0, :published_at, :created_at, :updated_at)'
         );
 
         $statement->execute([
@@ -153,6 +156,9 @@ final class Post
             'content' => $data['content'] ?? '',
             'category' => $data['category'] ?? 'Artikel',
             'tags' => $data['tags'] ?? '',
+            'title_en' => $data['title_en'] ?? '',
+            'excerpt_en' => $data['excerpt_en'] ?? '',
+            'content_en' => $data['content_en'] ?? '',
             'cover' => $data['cover'] ?? null,
             'status' => $status,
             'is_featured' => (int) ($data['is_featured'] ?? 0),
@@ -178,7 +184,9 @@ final class Post
 
         $statement = Database::connection()->prepare(
             'UPDATE posts SET title = :title, slug = :slug, excerpt = :excerpt, content = :content,
-                category = :category, tags = :tags, status = :status, is_featured = :is_featured,
+                category = :category, tags = :tags,
+                title_en = :title_en, excerpt_en = :excerpt_en, content_en = :content_en,
+                status = :status, is_featured = :is_featured,
                 reading_minutes = :reading_minutes, published_at = :published_at, updated_at = :updated_at
              WHERE id = :id'
         );
@@ -190,6 +198,9 @@ final class Post
             'content' => $data['content'] ?? '',
             'category' => $data['category'] ?? 'Artikel',
             'tags' => $data['tags'] ?? '',
+            'title_en' => $data['title_en'] ?? '',
+            'excerpt_en' => $data['excerpt_en'] ?? '',
+            'content_en' => $data['content_en'] ?? '',
             'status' => $status,
             'is_featured' => (int) ($data['is_featured'] ?? 0),
             'reading_minutes' => (int) ($data['reading_minutes'] ?? 0),
@@ -281,6 +292,19 @@ final class Post
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public static function mostViewed(int $limit = 5): array
+    {
+        $statement = Database::connection()->prepare(
+            "SELECT id, title, slug, views, category FROM posts WHERE status = 'published' ORDER BY views DESC, title ASC LIMIT " . max(1, min(20, $limit))
+        );
+        $statement->execute();
+
+        return $statement->fetchAll();
     }
 
     public static function readingMinutes(string $content): int

@@ -1,17 +1,21 @@
 <?php
-/** @var array{daily: list<array{date: string, total: int}>, totals: array{today: int, week: int, month: int, all: int}, pages: list<array{path: string, total: int}>, referrers: list<array{referrer: string, total: int}>} $stats */
+/** @var array{daily: list<array{date: string, total: int}>, totals: array{today: int, week: int, month: int, all: int, bots: int}, pages: list<array{path: string, total: int}>, referrers: list<array{referrer: string, total: int}>} $stats */
+/** @var int $days */
+/** @var list<array<string, mixed>> $popularProjects */
+/** @var list<array<string, mixed>> $popularPosts */
 
 $max = 0;
 foreach ($stats['daily'] as $day) {
     $max = max($max, $day['total']);
 }
 $max = max(1, $max);
-$label = static function (string $date): string {
-    $months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+$months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+$label = static function (string $date) use ($months): string {
     $time = strtotime($date) ?: time();
 
     return date('j', $time) . ' ' . ($months[(int) date('n', $time)] ?? '');
 };
+$ranges = [7 => '7 hari', 14 => '14 hari', 30 => '30 hari', 90 => '90 hari'];
 ?>
 <div class="admin-head">
     <div>
@@ -19,7 +23,17 @@ $label = static function (string $date): string {
         <h1 class="mt-1">Statistik kunjungan</h1>
         <p>Hanya halaman publik yang dihitung. Bot dan crawler difilter, tidak ada IP atau cookie yang disimpan.</p>
     </div>
-    <span class="badge"><?= count($stats['daily']) ?> hari terakhir</span>
+    <div class="actions">
+        <a class="btn btn-ghost btn-sm" href="<?= e(app_url('/admin/stats/export')) ?>"><?= svg_icon('download', 'icon-sm') ?> Ekspor CSV</a>
+        <span class="badge"><?= (int) $days ?> hari terakhir</span>
+    </div>
+</div>
+
+<div class="flex" style="gap:6px;flex-wrap:wrap;margin-bottom:18px">
+    <?php foreach ($ranges as $value => $text): ?>
+        <a class="btn btn-sm <?= $days === $value ? 'btn-soft' : 'btn-ghost' ?>"
+           href="<?= e(app_url('/admin/stats?hari=' . $value)) ?>" style="border-radius:999px"><?= e($text) ?></a>
+    <?php endforeach; ?>
 </div>
 
 <div class="stat-grid">
@@ -42,15 +56,23 @@ $label = static function (string $date): string {
 </div>
 
 <div class="card" style="margin-bottom:20px">
-    <div class="card-head"><h2>Kunjungan 14 hari terakhir</h2></div>
+    <div class="card-head">
+        <h2>Kunjungan <?= (int) $days ?> hari terakhir</h2>
+        <span class="small muted"><?= number_format($stats['totals']['bots'], 0, ',', '.') ?> kunjungan bot difilter</span>
+    </div>
     <div class="card-body">
-        <div class="visit-chart" role="img" aria-label="Grafik kunjungan harian 14 hari terakhir">
+        <div class="visit-chart" role="img" aria-label="Grafik kunjungan harian">
             <?php foreach ($stats['daily'] as $day): ?>
                 <?php $height = (int) max(4, round(($day['total'] / $max) * 120)); ?>
-                <div class="visit-col" title="<?= e($label($day['date'])) ?>: <?= (int) $day['total'] ?> kunjungan">
-                    <span class="visit-value"><?= (int) $day['total'] ?></span>
+                <div class="visit-col" style="min-width:<?= $days > 30 ? '22px' : '34px' ?>"
+                     title="<?= e($label($day['date'])) ?>: <?= (int) $day['total'] ?> kunjungan">
+                    <?php if ($days <= 30): ?>
+                        <span class="visit-value"><?= (int) $day['total'] ?></span>
+                    <?php endif; ?>
                     <span class="visit-bar" style="height:<?= $height ?>px"></span>
-                    <span class="visit-date"><?= e($label($day['date'])) ?></span>
+                    <?php if ($days <= 30 || (int) date('j', strtotime($day['date']) ?: time()) % 7 === 1): ?>
+                        <span class="visit-date"><?= e($label($day['date'])) ?></span>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
@@ -95,6 +117,52 @@ $label = static function (string $date): string {
                             <tr>
                                 <td><?= e((string) $referrer['referrer']) ?></td>
                                 <td style="text-align:right"><?= number_format((int) $referrer['total'], 0, ',', '.') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Project paling dilihat</h2></div>
+        <div class="card-body">
+            <?php if ($popularProjects === []): ?>
+                <p class="small muted">Belum ada project terbit.</p>
+            <?php else: ?>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>Project</th><th style="text-align:right">Dilihat</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($popularProjects as $project): ?>
+                            <tr>
+                                <td><a href="<?= e(app_url('/project/' . $project['slug'])) ?>" target="_blank" rel="noopener"><?= e((string) $project['title']) ?></a></td>
+                                <td style="text-align:right"><?= number_format((int) $project['views'], 0, ',', '.') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Artikel paling dilihat</h2></div>
+        <div class="card-body">
+            <?php if ($popularPosts === []): ?>
+                <p class="small muted">Belum ada artikel terbit.</p>
+            <?php else: ?>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>Artikel</th><th style="text-align:right">Dilihat</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($popularPosts as $post): ?>
+                            <tr>
+                                <td><a href="<?= e(app_url('/blog/' . $post['slug'])) ?>" target="_blank" rel="noopener"><?= e((string) $post['title']) ?></a></td>
+                                <td style="text-align:right"><?= number_format((int) $post['views'], 0, ',', '.') ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>

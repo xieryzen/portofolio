@@ -117,6 +117,45 @@ $categories = ['Web App', 'Website', 'Dashboard', 'Mobile App', 'API / Backend',
             </div>
 
             <div class="card">
+                <div class="card-head"><h2>Versi Inggris (opsional)</h2></div>
+                <div class="card-body form-section">
+                    <p class="small muted" style="margin-bottom:4px">
+                        Dipakai saat pengunjung memilih bahasa Inggris. Kosongkan untuk memakai teks Indonesia.
+                    </p>
+
+                    <div class="field">
+                        <label for="title_en">Judul (EN)</label>
+                        <input class="input" type="text" id="title_en" name="title_en" value="<?= e($value('title_en')) ?>" maxlength="180" placeholder="Example: Online Store POS System">
+                    </div>
+
+                    <div class="field">
+                        <label for="summary_en">Ringkasan (EN)</label>
+                        <input class="input" type="text" id="summary_en" name="summary_en" value="<?= e($value('summary_en')) ?>" maxlength="300" placeholder="One sentence about the project">
+                    </div>
+
+                    <div class="field">
+                        <label for="description_en">Deskripsi lengkap (EN)</label>
+                        <textarea class="textarea" id="description_en" name="description_en" rows="8" maxlength="20000" placeholder="Background, challenge, solution, and result…"><?= e($value('description_en')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_challenge_en">Tantangan (EN)</label>
+                        <textarea class="textarea" id="case_challenge_en" name="case_challenge_en" rows="3" maxlength="4000"><?= e($value('case_challenge_en')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_solution_en">Solusi (EN)</label>
+                        <textarea class="textarea" id="case_solution_en" name="case_solution_en" rows="3" maxlength="4000"><?= e($value('case_solution_en')) ?></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label for="case_result_en">Hasil (EN)</label>
+                        <textarea class="textarea" id="case_result_en" name="case_result_en" rows="3" maxlength="4000"><?= e($value('case_result_en')) ?></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-head"><h2>Tautan</h2></div>
                 <div class="card-body form-section">
                     <div class="form-row">

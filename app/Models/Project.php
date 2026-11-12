@@ -39,7 +39,8 @@ final class Project
         $statement = Database::connection()->prepare(
             'SELECT * FROM projects
              WHERE status = :status
-               AND (title LIKE :q1 OR summary LIKE :q2 OR description LIKE :q3 OR category LIKE :q4 OR tech_stack LIKE :q5)
+               AND (title LIKE :q1 OR summary LIKE :q2 OR description LIKE :q3 OR category LIKE :q4 OR tech_stack LIKE :q5
+                    OR title_en LIKE :q1 OR summary_en LIKE :q2 OR description_en LIKE :q3)
              ORDER BY is_featured DESC, sort_order ASC, id DESC
              LIMIT ' . max(1, min($limit, 200))
         );
@@ -152,9 +153,11 @@ final class Project
         $statement = Database::connection()->prepare(
             'INSERT INTO projects (title, slug, summary, description, category, client, role, year, tech_stack,
                 case_challenge, case_solution, case_result, case_metrics,
+                title_en, summary_en, description_en, case_challenge_en, case_solution_en, case_result_en,
                 project_url, repo_url, cover, is_featured, status, sort_order, created_at, updated_at)
              VALUES (:title, :slug, :summary, :description, :category, :client, :role, :year, :tech_stack,
                 :case_challenge, :case_solution, :case_result, :case_metrics,
+                :title_en, :summary_en, :description_en, :case_challenge_en, :case_solution_en, :case_result_en,
                 :project_url, :repo_url, :cover, :is_featured, :status, :sort_order, :created_at, :updated_at)'
         );
 
@@ -173,6 +176,12 @@ final class Project
             'case_solution' => $data['case_solution'] ?? '',
             'case_result' => $data['case_result'] ?? '',
             'case_metrics' => $data['case_metrics'] ?? '',
+            'title_en' => $data['title_en'] ?? '',
+            'summary_en' => $data['summary_en'] ?? '',
+            'description_en' => $data['description_en'] ?? '',
+            'case_challenge_en' => $data['case_challenge_en'] ?? '',
+            'case_solution_en' => $data['case_solution_en'] ?? '',
+            'case_result_en' => $data['case_result_en'] ?? '',
             'project_url' => $data['project_url'] ?? '',
             'repo_url' => $data['repo_url'] ?? '',
             'cover' => $data['cover'] ?? null,
@@ -196,6 +205,9 @@ final class Project
                 category = :category, client = :client, role = :role, year = :year, tech_stack = :tech_stack,
                 case_challenge = :case_challenge, case_solution = :case_solution, case_result = :case_result,
                 case_metrics = :case_metrics,
+                title_en = :title_en, summary_en = :summary_en, description_en = :description_en,
+                case_challenge_en = :case_challenge_en, case_solution_en = :case_solution_en,
+                case_result_en = :case_result_en,
                 project_url = :project_url, repo_url = :repo_url, is_featured = :is_featured, status = :status,
                 sort_order = :sort_order, updated_at = :updated_at
              WHERE id = :id'
@@ -216,6 +228,12 @@ final class Project
             'case_solution' => $data['case_solution'] ?? '',
             'case_result' => $data['case_result'] ?? '',
             'case_metrics' => $data['case_metrics'] ?? '',
+            'title_en' => $data['title_en'] ?? '',
+            'summary_en' => $data['summary_en'] ?? '',
+            'description_en' => $data['description_en'] ?? '',
+            'case_challenge_en' => $data['case_challenge_en'] ?? '',
+            'case_solution_en' => $data['case_solution_en'] ?? '',
+            'case_result_en' => $data['case_result_en'] ?? '',
             'project_url' => $data['project_url'] ?? '',
             'repo_url' => $data['repo_url'] ?? '',
             'is_featured' => (int) ($data['is_featured'] ?? 0),
@@ -399,6 +417,19 @@ final class Project
         $value = Database::connection()->query('SELECT COALESCE(MAX(sort_order), 0) FROM projects')->fetchColumn();
 
         return (int) $value + 1;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public static function mostViewed(int $limit = 5): array
+    {
+        $statement = Database::connection()->prepare(
+            "SELECT id, title, slug, views, category FROM projects WHERE status = 'published' ORDER BY views DESC, title ASC LIMIT " . max(1, min(20, $limit))
+        );
+        $statement->execute();
+
+        return $statement->fetchAll();
     }
 
     public static function uniqueSlug(string $title, int $ignoreId = 0): string

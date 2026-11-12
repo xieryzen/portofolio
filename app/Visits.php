@@ -57,7 +57,7 @@ final class Visits
     /**
      * @return array{
      *   daily: list<array{date: string, total: int}>,
-     *   totals: array{today: int, week: int, month: int, all: int},
+     *   totals: array{today: int, week: int, month: int, all: int, bots: int},
      *   pages: list<array{path: string, total: int}>,
      *   referrers: list<array{referrer: string, total: int}>
      * }
@@ -119,6 +119,7 @@ final class Visits
                 'week' => $count('SELECT COUNT(*) FROM visits WHERE is_bot = 0 AND substr(created_at, 1, 10) >= :day', ['day' => $weekStart]),
                 'month' => $count('SELECT COUNT(*) FROM visits WHERE is_bot = 0 AND substr(created_at, 1, 10) >= :day', ['day' => $monthStart]),
                 'all' => $count('SELECT COUNT(*) FROM visits WHERE is_bot = 0'),
+                'bots' => $count('SELECT COUNT(*) FROM visits WHERE is_bot = 1'),
             ],
             'pages' => $pages->fetchAll(),
             'referrers' => $referrers->fetchAll(),

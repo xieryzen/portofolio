@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Models\Comment;
 use App\Models\Post;
 use App\Models\Profile;
 use App\Visits;
@@ -47,10 +48,14 @@ final class BlogController extends Controller
         Visits::record('/blog/' . $post['slug']);
 
         $this->view('blog/show', [
-            'title' => (string) $post['title'],
-            'metaDescription' => (string) ($post['excerpt'] !== '' ? $post['excerpt'] : excerpt((string) $post['content'], 160)),
+            'title' => \localized($post, 'title'),
+            'metaDescription' => \localized($post, 'excerpt') !== ''
+                ? \localized($post, 'excerpt')
+                : excerpt(\localized($post, 'content'), 160),
             'post' => $post,
             'related' => Post::related((int) $post['id'], (string) $post['category'], 3),
+            'comments' => Comment::approvedFor((int) $post['id']),
+            'commentCount' => Comment::countForPost((int) $post['id']),
             'profile' => Profile::get(),
         ]);
     }

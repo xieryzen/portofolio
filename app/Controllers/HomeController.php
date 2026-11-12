@@ -62,13 +62,13 @@ final class HomeController extends Controller
         Visits::record('/project/' . $project['slug']);
 
         $this->view('project', [
-            'title' => (string) $project['title'],
+            'title' => \localized($project, 'title'),
             'project' => $project,
             'images' => Project::images((int) $project['id']),
             'releases' => Release::forProject((int) $project['id'], true),
             'related' => Project::related((int) $project['id'], 3),
             'profile' => Profile::get(),
-            'metaDescription' => (string) $project['summary'],
+            'metaDescription' => \localized($project, 'summary'),
         ]);
     }
 }

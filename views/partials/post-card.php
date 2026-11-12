@@ -2,15 +2,16 @@
 /** @var array<string, mixed> $post */
 $cover = media_url($post['cover'] ?? null);
 $url = app_url('/blog/' . $post['slug']);
+$title = localized($post, 'title');
 $published = (string) ($post['published_at'] ?? $post['created_at'] ?? '');
 $date = $published !== '' ? format_date($published, 'd M Y') : '';
 ?>
 <article class="project-card post-card" data-reveal>
-    <a class="project-cover" href="<?= e($url) ?>" aria-label="<?= e((string) $post['title']) ?>">
+    <a class="project-cover" href="<?= e($url) ?>" aria-label="<?= e($title) ?>">
         <?php if ($cover): ?>
-            <img src="<?= e($cover) ?>" alt="<?= e((string) $post['title']) ?>" loading="lazy">
+            <img src="<?= e($cover) ?>" alt="<?= e($title) ?>" loading="lazy">
         <?php else: ?>
-            <span class="cover-fallback"><?= e(initials((string) $post['title'])) ?></span>
+            <span class="cover-fallback"><?= e(initials($title)) ?></span>
         <?php endif; ?>
         <span class="project-badge"><?= e((string) ($post['category'] ?: t('blog.label'))) ?></span>
         <?php if ((int) ($post['is_featured'] ?? 0) === 1): ?>
@@ -19,8 +20,8 @@ $date = $published !== '' ? format_date($published, 'd M Y') : '';
     </a>
 
     <div class="project-body">
-        <h3><a href="<?= e($url) ?>"><?= e((string) $post['title']) ?></a></h3>
-        <p><?= e(excerpt((string) ($post['excerpt'] ?: $post['content']), 130)) ?></p>
+        <h3><a href="<?= e($url) ?>"><?= e($title) ?></a></h3>
+        <p><?= e(excerpt(localized($post, 'excerpt') ?: localized($post, 'content'), 130)) ?></p>
 
         <div class="project-meta">
             <?php if ($date !== ''): ?>

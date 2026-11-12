@@ -5,6 +5,7 @@
 /** @var string $accent */
 /** @var string $siteTitle */
 
+use App\Models\Comment;
 use App\Models\Message;
 use App\View;
 
@@ -24,10 +25,13 @@ try {
     $unread = 0;
 }
 
+$pendingComments = Comment::pendingCount();
+
 $menu = [
     ['label' => 'Ringkasan', 'path' => '/admin', 'icon' => 'dashboard', 'exact' => true],
     ['label' => 'Portofolio', 'path' => '/admin/projects', 'icon' => 'folder'],
     ['label' => 'Artikel', 'path' => '/admin/posts', 'icon' => 'file'],
+    ['label' => 'Komentar', 'path' => '/admin/comments', 'icon' => 'message', 'badge' => $pendingComments],
     ['label' => 'Profil', 'path' => '/admin/profile', 'icon' => 'user'],
     ['label' => 'Keahlian', 'path' => '/admin/skills', 'icon' => 'sparkles'],
     ['label' => 'Pengguna', 'path' => '/admin/users', 'icon' => 'users'],

@@ -61,7 +61,12 @@ $filters = [
                 </thead>
                 <tbody>
                 <?php foreach ($result['items'] as $post): ?>
-                    <?php $cover = media_url($post['cover'] ?? null); ?>
+                    <?php
+                    $cover = media_url($post['cover'] ?? null);
+                    $scheduled = ($post['status'] ?? '') === 'published'
+                        && !empty($post['published_at'])
+                        && strtotime((string) $post['published_at']) > time();
+                    ?>
                     <tr>
                         <td>
                             <div class="row-title">
@@ -78,7 +83,9 @@ $filters = [
                         </td>
                         <td><?= e((string) $post['category']) ?></td>
                         <td>
-                            <?php if (($post['status'] ?? '') === 'published'): ?>
+                            <?php if ($scheduled): ?>
+                                <span class="badge badge-accent"><?= svg_icon('clock', 'icon-sm') ?> Terjadwal</span>
+                            <?php elseif (($post['status'] ?? '') === 'published'): ?>
                                 <span class="badge badge-success">Publik</span>
                             <?php else: ?>
                                 <span class="badge badge-muted">Draft</span>
@@ -86,7 +93,7 @@ $filters = [
                         </td>
                         <td><?= number_format((int) $post['views'], 0, ',', '.') ?></td>
                         <td class="small muted">
-                            <?= $post['published_at'] ? e(format_date((string) $post['published_at'], 'd M Y')) : '—' ?>
+                            <?= $post['published_at'] ? e(format_date((string) $post['published_at'], 'd M Y H:i')) : '—' ?>
                         </td>
                         <td class="actions">
                             <a class="icon-btn" href="<?= e(app_url('/admin/posts/' . $post['id'] . '/edit')) ?>" aria-label="Edit artikel"><?= svg_icon('edit') ?></a>
