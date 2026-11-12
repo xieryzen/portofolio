@@ -1,0 +1,96 @@
+{
+    "_comment": "Egg Pterodactyl untuk Portfolio CMS (PHP 8.3 + SQLite). Import via Admin Area > Nests > Import Egg.",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2026-11-12T00:00:00+07:00",
+    "name": "PHP 8.3 - Portfolio CMS",
+    "author": "xieryzen@users.noreply.github.com",
+    "description": "Portfolio CMS berbasis PHP 8.3 dengan panel admin. Menggunakan PHP built-in server dan SQLite (tanpa Nginx/MySQL). Start command: bash start.sh.",
+    "features": null,
+    "docker_images": {
+        "PHP 8.3 CLI": "php:8.3-cli",
+        "PHP 8.3 CLI (Debian slim)": "php:8.3-cli-bookworm"
+    },
+    "file_denylist": [],
+    "startup": "bash start.sh",
+    "config": {
+        "files": {},
+        "startup": "{\r\n    \"done\": \"Menjalankan PHP\"\r\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/bash\n# Install script Portfolio CMS\napt update\napt install -y git unzip curl\n\ncd /mnt/server\n\nif [ -z \"$(ls -A /mnt/server)\" ]; then\n    echo \"Mengunduh aplikasi...\"\n    git clone https://github.com/xieryzen/portofolio.git . || true\nfi\n\nmkdir -p storage/uploads storage/sessions storage/logs\nchmod -R 775 storage\n\nif [ ! -f .env ]; then\n    cp .env.example .env\n    chmod 664 .env\nfi\n\necho \"Instalasi selesai.\"\n",
+            "container": "php:8.3-cli",
+            "entrypoint": "bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Nama Owner",
+            "description": "Nama yang tampil pada profil portofolio.",
+            "env_variable": "OWNER_NAME",
+            "default_value": "Pemilik Portfolio",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:150"
+        },
+        {
+            "name": "Email Owner",
+            "description": "Email login owner. Dibuat otomatis saat pertama kali server dijalankan.",
+            "env_variable": "OWNER_EMAIL",
+            "default_value": "owner@example.com",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|email|max:190"
+        },
+        {
+            "name": "Kata Sandi Owner",
+            "description": "Kata sandi awal owner. Ganti setelah login pertama.",
+            "env_variable": "OWNER_PASSWORD",
+            "default_value": "Owner12345!",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|min:8"
+        },
+        {
+            "name": "Debug Mode",
+            "description": "Tampilkan detail error. Gunakan false di produksi.",
+            "env_variable": "APP_DEBUG",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:true,false"
+        },
+        {
+            "name": "Izinkan Registrasi",
+            "description": "Izinkan pengunjung membuat akun user.",
+            "env_variable": "ALLOW_REGISTRATION",
+            "default_value": "true",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:true,false"
+        },
+        {
+            "name": "Batas Upload (MB)",
+            "description": "Ukuran maksimal tiap gambar yang diunggah.",
+            "env_variable": "MAX_UPLOAD_MB",
+            "default_value": "6",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1,50"
+        },
+        {
+            "name": "Zona Waktu",
+            "description": "Zona waktu container.",
+            "env_variable": "TZ",
+            "default_value": "Asia/Jakarta",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:64"
+        }
+    ]
+}

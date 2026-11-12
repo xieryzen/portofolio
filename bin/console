@@ -1,0 +1,196 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * CLI utilitas portfolio.
+ * Contoh:
+ *   php bin/console migrate
+ *   php bin/console owner:create owner@example.com "Nama Owner" "SandiBaru123!"
+ *   php bin/console password:reset owner@example.com "SandiBaru123!"
+ *   php bin/console user:list
+ */
+
+use App\Config;
+use App\Database;
+use App\Models\User;
+
+if (PHP_SAPI !== 'cli') {
+    http_response_code(403);
+    exit('CLI only.');
+}
+
+require dirname(__DIR__) . '/app/bootstrap.php';
+
+$argvList = $argv ?? [];
+$command = $argvList[1] ?? 'list';
+$args = array_slice($argvList, 2);
+
+$line = static fn (string $text = ''): string => $text . PHP_EOL;
+$ok = static fn (string $text): string => "\033[32m✔\033[0m " . $text . PHP_EOL;
+$err = static fn (string $text): string => "\033[31m✖\033[0m " . $text . PHP_EOL;
+$info = static fn (string $text): string => "\033[36mℹ\033[0m " . $text . PHP_EOL;
+
+switch ($command) {
+    case 'list':
+    case 'help':
+        echo $line();
+        echo $line('  Portfolio CMS — CLI');
+        echo $line('  ─────────────────────────────────────────────');
+        echo $line('  php bin/console migrate                    Jalankan migrasi & seeding');
+        echo $line('  php bin/console owner:create <email> <nama> <password>');
+        echo $line('                                             Buat akun owner baru');
+        echo $line('  php bin/console password:reset <email> <password>');
+        echo $line('                                             Reset kata sandi akun');
+        echo $line('  php bin/console user:list                  Daftar akun');
+        echo $line('  php bin/console key:generate               Buat APP_KEY acak');
+        echo $line('  php bin/console stats                      Ringkasan data');
+        echo $line('  php bin/console db:reset --force           Hapus semua data (hati-hati!)');
+        echo $line();
+
+        exit(0);
+
+    case 'migrate':
+        Database::migrate(true);
+        echo $ok('Migrasi selesai. Database siap digunakan.');
+
+        exit(0);
+
+    case 'owner:create':
+    case 'admin:create':
+        [$email, $name, $password] = [$args[0] ?? '', $args[1] ?? '', $args[2] ?? ''];
+
+        if ($email === '' || $name === '' || $password === '') {
+            echo $err('Penggunaan: php bin/console owner:create <email> <nama> <password>');
+            exit(1);
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo $err('Email tidak valid.');
+            exit(1);
+        }
+
+        if (strlen($password) < 8) {
+            echo $err('Kata sandi minimal 8 karakter.');
+            exit(1);
+        }
+
+        if (User::findByEmail($email)) {
+            echo $err('Email sudah terdaftar. Gunakan password:reset bila ingin mengganti sandi.');
+            exit(1);
+        }
+
+        User::create($name, $email, $password, 'owner');
+        echo $ok('Akun owner ' . $email . ' berhasil dibuat.');
+
+        exit(0);
+
+    case 'password:reset':
+        [$email, $password] = [$args[0] ?? '', $args[1] ?? ''];
+
+        if ($email === '' || $password === '') {
+            echo $err('Penggunaan: php bin/console password:reset <email> <password>');
+            exit(1);
+        }
+
+        $user = User::findByEmail($email);
+        if (!$user) {
+            echo $err('Akun dengan email tersebut tidak ditemukan.');
+            exit(1);
+        }
+
+        if (strlen($password) < 8) {
+            echo $err('Kata sandi minimal 8 karakter.');
+            exit(1);
+        }
+
+        User::updatePassword((int) $user['id'], $password);
+        echo $ok('Kata sandi ' . $email . ' berhasil diperbarui.');
+
+        exit(0);
+
+    case 'user:list':
+        $users = Database::connection()
+            ->query('SELECT id, name, email, role, is_active FROM users ORDER BY id ASC')
+            ->fetchAll();
+
+        if ($users === []) {
+            echo $info('Belum ada akun.');
+
+            exit(0);
+        }
+
+        printf("%-5s %-28s %-32s %-8s %s\n", 'ID', 'NAMA', 'EMAIL', 'ROLE', 'STATUS');
+        foreach ($users as $user) {
+            printf(
+                "%-5s %-28s %-32s %-8s %s\n",
+                $user['id'],
+                mb_strimwidth((string) $user['name'], 0, 27, '…'),
+                $user['email'],
+                $user['role'],
+                (int) $user['is_active'] === 1 ? 'aktif' : 'nonaktif'
+            );
+        }
+
+        exit(0);
+
+    case 'key:generate':
+        $key = bin2hex(random_bytes(32));
+        $envPath = base_path('.env');
+
+        if (!is_file($envPath)) {
+            echo $err('.env tidak ditemukan. Salin .env.example terlebih dahulu.');
+            exit(1);
+        }
+
+        $content = (string) file_get_contents($envPath);
+        $content = preg_replace('~^APP_KEY=.*$~m', 'APP_KEY=' . $key, $content) ?? $content;
+        file_put_contents($envPath, $content);
+
+        echo $ok('APP_KEY baru: ' . $key);
+        echo $info('Simpan nilai ini dengan aman dan jangan dibagikan.');
+
+        exit(0);
+
+    case 'stats':
+        $pdo = Database::connection();
+        printf(
+            "Project: %d | Publik: %d | Draft: %d | Pengguna: %d | Pesan: %d\n",
+            (int) $pdo->query('SELECT COUNT(*) FROM projects')->fetchColumn(),
+            (int) $pdo->query("SELECT COUNT(*) FROM projects WHERE status = 'published'")->fetchColumn(),
+            (int) $pdo->query("SELECT COUNT(*) FROM projects WHERE status = 'draft'")->fetchColumn(),
+            (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn(),
+            (int) $pdo->query('SELECT COUNT(*) FROM messages')->fetchColumn()
+        );
+
+        exit(0);
+
+    case 'db:reset':
+        if (!in_array('--force', $args, true)) {
+            echo $err('Perintah ini menghapus SEMUA data. Tambahkan --force untuk melanjutkan.');
+            exit(1);
+        }
+
+        $pdo = Database::connection();
+        $driver = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        foreach (['project_images', 'projects', 'messages', 'skills', 'profiles', 'login_attempts', 'settings', 'users'] as $table) {
+            $pdo->exec('DELETE FROM ' . $table);
+        }
+
+        if ($driver === 'sqlite') {
+            $pdo->exec("DELETE FROM sqlite_sequence WHERE name IN ('project_images','projects','messages','skills','profiles','users','login_attempts')");
+        }
+
+        @unlink(base_path('storage/.schema_version'));
+        Database::migrate(true);
+
+        echo $ok('Database dikosongkan dan di-seed ulang dari .env.');
+
+        exit(0);
+
+    default:
+        echo $err('Perintah tidak dikenal: ' . $command);
+        echo $info('Jalankan: php bin/console list');
+        exit(1);
+}

@@ -1,0 +1,13 @@
+# Jika hosting hanya mengizinkan DocumentRoot di root project,
+# file ini mengarahkan semua permintaan ke folder public/.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Blokir akses langsung ke file sensitif
+    RewriteRule ^(\.env|\.git|app|storage|views|bin|deploy)(/|$) - [F,L]
+
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+Options -Indexes

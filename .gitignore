@@ -1,0 +1,17 @@
+/.env
+/storage/database.sqlite
+/storage/database.sqlite-journal
+/storage/database.sqlite-wal
+/storage/database.sqlite-shm
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/.schema_version
+/storage/.installed
+/vendor/
+/node_modules/
+.DS_Store
+*.log
