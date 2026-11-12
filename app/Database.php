@@ -16,7 +16,7 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
-    private const SCHEMA_VERSION = '2';
+    private const SCHEMA_VERSION = '3';
 
     public static function connection(): PDO
     {
@@ -115,6 +115,9 @@ final class Database
             role VARCHAR(20) NOT NULL DEFAULT 'user',
             is_active TINYINT(1) NOT NULL DEFAULT 1,
             last_login_at VARCHAR(25) NULL,
+            totp_secret VARCHAR(64) NULL,
+            totp_enabled_at VARCHAR(25) NULL,
+            totp_recovery TEXT NULL,
             created_at VARCHAR(25) NOT NULL,
             updated_at VARCHAR(25) NOT NULL
         )$suffix";
@@ -214,6 +217,17 @@ final class Database
             setting_value TEXT NULL
         )$suffix";
 
+        $tables[] = "CREATE TABLE IF NOT EXISTS activity_logs (
+            id $id,
+            user_id INT NULL,
+            actor VARCHAR(190) NOT NULL DEFAULT '',
+            action VARCHAR(60) NOT NULL,
+            description VARCHAR(255) NOT NULL DEFAULT '',
+            ip_address VARCHAR(45) NOT NULL DEFAULT '',
+            user_agent VARCHAR(255) NOT NULL DEFAULT '',
+            created_at VARCHAR(25) NOT NULL
+        )$suffix";
+
         $tables[] = "CREATE TABLE IF NOT EXISTS login_attempts (
             id $id,
             email VARCHAR(190) NOT NULL,
@@ -225,6 +239,11 @@ final class Database
             $pdo->exec($sql);
         }
 
+        // Kolom baru untuk instalasi lama (schema v2 → v3).
+        self::addColumnIfMissing($pdo, 'users', 'totp_secret', 'VARCHAR(64) NULL');
+        self::addColumnIfMissing($pdo, 'users', 'totp_enabled_at', 'VARCHAR(25) NULL');
+        self::addColumnIfMissing($pdo, 'users', 'totp_recovery', 'TEXT NULL');
+
         if ($mysql) {
             // Index dibuat terpisah karena MySQL tidak punya IF NOT EXISTS untuk index.
             self::createIndexIfMissing($pdo, 'project_images', 'idx_project_images_project', 'project_id');
@@ -232,12 +251,14 @@ final class Database
             self::createIndexIfMissing($pdo, 'projects', 'idx_projects_status', 'status');
             self::createIndexIfMissing($pdo, 'messages', 'idx_messages_read', 'is_read');
             self::createIndexIfMissing($pdo, 'login_attempts', 'idx_login_attempts_email', 'email');
+            self::createIndexIfMissing($pdo, 'activity_logs', 'idx_activity_logs_created', 'created_at');
         } else {
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_images_project ON project_images (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_releases_project ON project_releases (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_read ON messages (is_read)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (email)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs (created_at)');
         }
 
         self::seed($pdo);
@@ -578,6 +599,33 @@ SVG;
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+    }
+
+    private static function addColumnIfMissing(PDO $pdo, string $table, string $column, string $definition): void
+    {
+        try {
+            if (self::driver() === 'mysql') {
+                $statement = $pdo->prepare(
+                    'SELECT 1 FROM information_schema.COLUMNS
+                     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column'
+                );
+                $statement->execute(['table' => $table, 'column' => $column]);
+                if ($statement->fetch()) {
+                    return;
+                }
+            } else {
+                $columns = $pdo->query('PRAGMA table_info(' . $table . ')')->fetchAll();
+                foreach ($columns as $info) {
+                    if (($info['name'] ?? '') === $column) {
+                        return;
+                    }
+                }
+            }
+
+            $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column . ' ' . $definition);
+        } catch (PDOException) {
+            // kolom sudah ada / tidak punya izin — bukan masalah fatal
+        }
     }
 
     private static function createIndexIfMissing(PDO $pdo, string $table, string $index, string $column): void

@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 
 use App\Auth;
 use App\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Notifier;
 use App\Settings;
@@ -61,6 +62,7 @@ final class SettingsController extends Controller
         Settings::setMany($data);
         Settings::flush();
 
+        ActivityLog::record('settings_updated', 'Memperbarui pengaturan situs');
         \flash('success', 'Pengaturan situs disimpan.');
         $this->redirect('/admin/settings');
     }
@@ -99,10 +101,13 @@ final class SettingsController extends Controller
     {
         Auth::requireOwner();
 
-        $user = Auth::user();
-        if (!$user) {
+        $sessionUser = Auth::user();
+        if (!$sessionUser) {
             $this->redirect('/login');
         }
+
+        // Auth::user() tidak memuat password_hash, jadi ambil data lengkap.
+        $user = User::find((int) $sessionUser['id']) ?? $sessionUser;
 
         $name = $this->inputString('name');
         $email = mb_strtolower($this->inputString('email'));
@@ -134,6 +139,12 @@ final class SettingsController extends Controller
         }
 
         User::updateProfile((int) $user['id'], $name, $email);
+
+        if ($password !== '') {
+            ActivityLog::record('password_changed', 'Mengubah kata sandi akun', (int) $user['id'], $email);
+        } else {
+            ActivityLog::record('account_updated', 'Memperbarui nama/email akun', (int) $user['id'], $email);
+        }
         $this->clearFormState();
         \flash('success', 'Data akun berhasil diperbarui.');
         $this->redirect('/admin/settings');

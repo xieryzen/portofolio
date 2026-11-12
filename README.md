@@ -36,6 +36,10 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 **Akun**
 - Register user (bisa dimatikan), login, logout, ganti kata sandi, halaman dashboard user.
 - Tiga role: `owner` (semua akses), `admin` (kelola konten), `user` (hanya melihat).
+- **Verifikasi dua langkah (2FA/TOTP)** opsional per akun: kode 6 digit dari Google Authenticator,
+  Authy, 1Password, atau Bitwarden, plus 8 kode pemulihan sekali pakai.
+- **Log aktivitas** untuk owner: login sukses/gagal, logout, 2FA dinyalakan/dimatikan,
+  kode pemulihan dipakai, perubahan kata sandi, pengaturan, dan restore cadangan.
 - Proteksi CSRF di semua form, rate limit login, session hardening, escaping output.
 
 **Panel admin**
@@ -49,6 +53,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Pengaturan: judul situs, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
 - **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
   lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
+- **Keamanan akun**: aktifkan/nonaktifkan 2FA, lihat sisa kode pemulihan, buat ulang kode pemulihan.
+- **Log aktivitas**: 40 entri terbaru per halaman dengan waktu, akun, aksi, keterangan, dan alamat IP.
 
 ---
 
@@ -305,6 +311,36 @@ Catatan:
 
 ---
 
+## 🔒 Verifikasi dua langkah (2FA)
+
+2FA bersifat opsional dan diatur per akun (owner maupun admin) lewat **/admin/security**.
+
+1. Buka **Admin → Keamanan**, klik **Mulai aktifkan 2FA**.
+2. Buka aplikasi authenticator (Google Authenticator, Authy, 1Password, Bitwarden, dsb),
+   pilih "Enter a setup key" / "Tambah akun secara manual", lalu masukkan **secret** yang tampil.
+   Alternatif: salin tautan `otpauth://…` ke HP.
+3. Masukkan kode 6 digit dari aplikasi → **Aktifkan 2FA**.
+4. **Simpan 8 kode pemulihan** yang muncul (hanya ditampilkan sekali). Setiap kode bisa dipakai
+   satu kali bila ponsel hilang.
+
+Saat login, setelah kata sandi benar kamu akan diarahkan ke `/two-factor` untuk memasukkan kode
+6 digit atau kode pemulihan. Sesi verifikasi kedaluwarsa setelah 10 menit dan dibatasi 6 percobaan.
+Menonaktifkan 2FA atau membuat ulang kode pemulihan memerlukan kata sandi.
+
+Kode TOTP bergantung pada waktu. Bila kode selalu ditolak, aktifkan sinkronisasi waktu otomatis
+di perangkat.
+
+**Darurat — ponsel & kode pemulihan hilang:** jalankan dari CLI server:
+
+```bash
+php bin/console 2fa:disable akun@email.com
+```
+
+Perintah ini menghapus secret dan kode pemulihan akun tersebut, sehingga login kembali memakai
+kata sandi saja. Catat aksi ini di log server.
+
+---
+
 ## ⚙️ Konfigurasi `.env`
 
 | Variabel | Default | Keterangan |
@@ -359,6 +395,7 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/robots.txt` | publik | Aturan crawler + tautan sitemap |
 | `/download/{id}` | publik* | Unduh file rilis (*hanya rilis & project berstatus publik; admin selalu bisa) |
 | `/login`, `/register` | publik | Autentikasi |
+| `/two-factor` | publik* | Verifikasi kode 2FA setelah kata sandi benar |
 | `/dashboard` | user | Portofolio versi anggota |
 | `/profil` | user | Akun & ganti kata sandi |
 | `/admin` | owner/admin | Ringkasan panel |
@@ -372,6 +409,8 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/admin/backup` | **owner** | Cadangan & restore data |
 | `/admin/backup/database` | **owner** | Unduh berkas database SQLite |
 | `/admin/backup/archive` | **owner** | Unduh ZIP cadangan lengkap |
+| `/admin/security` | owner/admin | Aktifkan 2FA, kode pemulihan |
+| `/admin/activity` | **owner** | Log aktivitas (login, 2FA, perubahan) |
 | `/admin/settings` | **owner** | Identitas situs, warna, akun owner |
 
 ---
@@ -385,6 +424,7 @@ php bin/console list                            # daftar perintah
 php bin/console migrate                         # migrasi + seeding ulang
 php bin/console owner:create <email> <nama> <sandi>
 php bin/console password:reset <email> <sandi>  # reset sandi (lupa password)
+php bin/console 2fa:disable <email>             # matikan 2FA (darurat, ponsel hilang)
 php bin/console user:list
 php bin/console key:generate
 php bin/console stats
@@ -424,6 +464,9 @@ dan hanya bisa diunduh lewat route `/download/{id}` yang mengecek status publika
 - Upload divalidasi MIME (`finfo`) + `getimagesize`, nama file diacak, SVG ditolak.
 - Session: cookie `HttpOnly` + `SameSite=Lax`, `use_strict_mode`, idle timeout 6 jam.
 - Login dibatasi 6 percobaan gagal per email dalam 10 menit.
+- 2FA memakai TOTP RFC 6238 (SHA-1, 30 detik, toleransi ±1 langkah). Kode pemulihan disimpan
+  sebagai hash bcrypt dan dihapus setelah dipakai.
+- Log aktivitas tidak pernah menyimpan kata sandi, kode 2FA, atau isi pesan.
 - Semua output user di-escape dengan `e()`.
 - Jangan set `APP_DEBUG=true` di produksi dan jangan bagikan `.env`.
 

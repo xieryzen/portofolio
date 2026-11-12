@@ -32,6 +32,48 @@ final class User
         return $user ?: null;
     }
 
+    public static function saveTotpSecret(int $id, ?string $secret): void
+    {
+        $statement = Database::connection()->prepare(
+            'UPDATE users SET totp_secret = :secret, totp_enabled_at = NULL, totp_recovery = NULL, updated_at = :updated WHERE id = :id'
+        );
+        $statement->execute([
+            'secret' => $secret,
+            'updated' => date('Y-m-d H:i:s'),
+            'id' => $id,
+        ]);
+    }
+
+    public static function enableTotp(int $id, string $secret, string $recoveryJson): void
+    {
+        $statement = Database::connection()->prepare(
+            'UPDATE users SET totp_secret = :secret, totp_enabled_at = :enabled, totp_recovery = :recovery, updated_at = :updated WHERE id = :id'
+        );
+        $statement->execute([
+            'secret' => $secret,
+            'enabled' => date('Y-m-d H:i:s'),
+            'recovery' => $recoveryJson,
+            'updated' => date('Y-m-d H:i:s'),
+            'id' => $id,
+        ]);
+    }
+
+    public static function disableTotp(int $id): void
+    {
+        $statement = Database::connection()->prepare(
+            'UPDATE users SET totp_secret = NULL, totp_enabled_at = NULL, totp_recovery = NULL, updated_at = :updated WHERE id = :id'
+        );
+        $statement->execute(['updated' => date('Y-m-d H:i:s'), 'id' => $id]);
+    }
+
+    public static function setTotpRecovery(int $id, string $recoveryJson): void
+    {
+        $statement = Database::connection()->prepare(
+            'UPDATE users SET totp_recovery = :recovery, updated_at = :updated WHERE id = :id'
+        );
+        $statement->execute(['recovery' => $recoveryJson, 'updated' => date('Y-m-d H:i:s'), 'id' => $id]);
+    }
+
     /**
      * @return array{items: list<array<string, mixed>>, total: int, pages: int, page: int}
      */
