@@ -46,6 +46,12 @@
     <?php endif; ?>
 </p>
 
+<p class="auth-hint">
+    <strong>Pemilik situs?</strong> Masuk memakai akun <em>owner</em> yang dibuat dari
+    <code>OWNER_EMAIL</code> / <code>OWNER_PASSWORD</code> di file <code>.env</code>.
+    Lupa kata sandi? Jalankan <code>php bin/console password:reset</code> dari console server.
+</p>
+
 <p class="auth-foot" style="margin-top:10px">
     <a href="<?= e(app_url('/')) ?>" class="muted" style="font-weight:500">← Kembali ke portofolio</a>
 </p>
