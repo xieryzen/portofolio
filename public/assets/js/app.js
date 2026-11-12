@@ -382,4 +382,14 @@
         const field = target.closest('.field, .form-row') || target;
         shake(field);
     }, true);
+    /* ---------- PWA: daftarkan service worker ---------- */
+    if ('serviceWorker' in navigator && !window.location.pathname.startsWith('/admin')) {
+        const swUrl = document.documentElement.dataset.sw || 'sw.js';
+
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register(swUrl).catch(() => {
+                /* offline support opsional — abaikan bila gagal */
+            });
+        });
+    }
 })();
