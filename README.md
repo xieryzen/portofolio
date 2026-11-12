@@ -53,14 +53,10 @@ bash start.sh
 
 Buka `http://localhost:8080`.
 
-**Login pertama (dari `.env`):**
+**Login pertama:** `owner@example.com` / `Owner12345!` (dibuat otomatis dari `.env`).
 
-| Peran | Email | Kata sandi |
-| ----- | ----- | ---------- |
-| Owner | `owner@example.com` | `Owner12345!` |
-
-> ⚠️ **Segera ganti** email & kata sandi owner lewat **Admin → Pengaturan → Akun owner**
-> (atau ubah `OWNER_EMAIL` / `OWNER_PASSWORD` sebelum deploy pertama).
+> ⚠️ Akun ini **milik instalasi kamu sendiri** — wajib diganti sebelum dipakai publik.
+> Lihat bagian **🔑 Akun owner** di bawah untuk cara menggantinya.
 
 Akun owner otomatis dibuat saat aplikasi pertama kali dijalankan. Database, tabel, dan
 **3 contoh project + dokumentasi + satu rilis demo (`v1.0.0`)** dibuat otomatis — tidak perlu
@@ -70,6 +66,58 @@ import SQL. Contoh project dan rilis bisa dihapus kapan saja dari panel admin.
 - PHP **8.3** atau lebih baru
 - Ekstensi: `pdo_sqlite` **atau** `pdo_mysql`, `mbstring`, `fileinfo`
 - Folder `storage/` harus writable (sesi, database, upload, log)
+
+---
+
+## 🔑 Akun owner — ganti sebelum dipakai
+
+Repo ini adalah **template**: siapa pun yang meng-install-nya menjalankan instance sendiri.
+Database, file upload, dan file rilis tersimpan di server masing-masing — **tidak ada
+koneksi ke server pembuat repo**. Jadi setiap pemasang wajib memakai akun owner sendiri,
+bukan kredensial contoh di bawah.
+
+### Kredensial awal (default)
+
+| Peran | Email | Kata sandi |
+| ----- | ----- | ---------- |
+| Owner | `owner@example.com` | `Owner12345!` |
+
+Nilai tersebut dibaca dari `.env` (atau variabel egg Pterodactyl) saat instalasi pertama:
+
+| Variabel | Default | Keterangan |
+| --- | --- | --- |
+| `OWNER_NAME` | `Pemilik Portfolio` | Nama tampilan owner |
+| `OWNER_EMAIL` | `owner@example.com` | Email login owner |
+| `OWNER_PASSWORD` | `Owner12345!` | Kata sandi owner |
+
+Nilai di atas adalah isi `.env.example`. Kalau variabelnya dibiarkan kosong, kode memakai
+`Owner` / `owner@example.com` / `Owner12345!` sebagai cadangan.
+
+Akun owner dibuat **hanya sekali**, yaitu ketika tabel `users` masih kosong. Setelah itu,
+mengubah `OWNER_EMAIL` / `OWNER_PASSWORD` di `.env` **tidak** mengubah akun yang sudah ada —
+pakai salah satu cara berikut.
+
+### Cara mengganti akun owner
+
+1. **Lewat panel (disarankan)** — login sebagai owner, buka **Admin → Pengaturan**, lalu isi
+   bagian **Akun owner**: nama, email, dan kata sandi baru (kosongkan kolom kata sandi bila
+   tidak ingin menggantinya). Kata sandi saat ini diminta sebagai konfirmasi; kata sandi baru
+   minimal 8 karakter.
+2. **Lewat CLI** — kalau lupa kata sandi atau tidak bisa login:
+
+   ```bash
+   php bin/console password:reset email@anda.com SandiBaru123!          # reset sandi
+   php bin/console owner:create email@anda.com "Nama Anda" SandiBaru123! # owner tambahan
+   php bin/console user:list                                            # lihat semua akun
+   ```
+
+   Jalankan dari **root aplikasi** (bukan folder `public/`). Di Pterodactyl buka tab
+   **Console** server, lalu ketik perintahnya.
+3. **Sebelum instalasi pertama** — isi `OWNER_EMAIL`, `OWNER_PASSWORD`, dan `OWNER_NAME` di
+   `.env` (atau di variabel egg) agar akun owner langsung dibuat dengan kredensial pilihanmu.
+
+> ⚠️ Jangan biarkan `Owner12345!` aktif pada instance yang bisa diakses publik.
+> Setelah ganti akun, cek juga **Admin → Pengguna** untuk memastikan tidak ada akun asing.
 
 ---
 
@@ -108,7 +156,8 @@ Jika egg memakai install script Git, file akan di-clone otomatis saat instalasi.
   ```
 
 - Buka alamat server: `http://IP:PORT` (atau domain/subdomain yang diarahkan ke port tersebut).
-- Login dengan akun owner dari variabel egg / `.env`.
+- Login dengan akun owner dari variabel egg / `.env`, lalu ganti kredensialnya —
+  lihat bagian **🔑 Akun owner**.
 
 ### 5. Batas upload
 Ada dua batas unggahan:
@@ -173,6 +222,35 @@ server {
 docker build -t portfolio .
 docker run -d -p 8080:8080 -v portfolio_storage:/app/storage --name portfolio portfolio
 ```
+
+---
+
+## 📦 Rilis aplikasi (GitHub Releases)
+
+Ada dua jenis "rilis" di repo ini — jangan tertukar:
+
+| | Rilis di dalam aplikasi | GitHub Releases |
+| --- | --- | --- |
+| Fungsi | file unduhan untuk pengunjung situs, per project (versi, catatan, file, penghitung unduhan) | paket **aplikasi** (ZIP) untuk instalasi/upgrade |
+| Dikelola di | Admin → Edit project → **Rilis & unduhan** | tag git + GitHub Actions |
+| Disimpan di | `storage/releases/` pada server masing-masing | aset rilis di GitHub |
+
+### Membuat paket rilis baru
+
+Workflow `.github/workflows/release.yml` berjalan otomatis setiap tag `v*` di-push:
+
+```bash
+git tag -a v1.0.1 -m "Portofolio v1.0.1"
+git push origin v1.0.1
+```
+
+Workflow akan mengecek sintaks seluruh file PHP, membuat `portofolio-v1.0.1.zip` (tanpa
+`.git`, `.github`, isi `storage/`, dan `.env`), lalu mempublikasikan GitHub Release berisi ZIP
+tersebut. Rilis pertama: **v1.0.0**.
+
+ZIP itu bisa dipakai untuk instalasi baru di Pterodactyl: ekstrak ke folder server, lalu
+**Start**. Untuk memperbarui instalasi yang sudah ada, ekstrak ulang di atasnya — jangan hapus
+folder `storage/` agar database, upload, dan file rilis tetap aman.
 
 ---
 
