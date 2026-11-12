@@ -5,6 +5,8 @@
 /storage/database.sqlite-shm
 /storage/uploads/*
 !/storage/uploads/.gitkeep
+/storage/releases/*
+!/storage/releases/.gitkeep
 /storage/sessions/*
 !/storage/sessions/.gitkeep
 /storage/logs/*

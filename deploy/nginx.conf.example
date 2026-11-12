@@ -10,7 +10,8 @@ server {
     index index.php;
 
     charset utf-8;
-    client_max_body_size 8M;
+    # Samakan dengan RELEASE_MAX_MB + buffer (default rilis 50 MB).
+    client_max_body_size 60M;
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;

@@ -203,6 +203,8 @@ final class Project
             \App\Uploader::delete((string) $image['file_name']);
         }
 
+        Release::deleteByProject($id);
+
         $pdo->prepare('DELETE FROM project_images WHERE project_id = :id')->execute(['id' => $id]);
         $pdo->prepare('DELETE FROM projects WHERE id = :id')->execute(['id' => $id]);
     }

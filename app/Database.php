@@ -16,7 +16,7 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
-    private const SCHEMA_VERSION = '1';
+    private const SCHEMA_VERSION = '2';
 
     public static function connection(): PDO
     {
@@ -174,6 +174,22 @@ final class Database
             created_at VARCHAR(25) NOT NULL
         )$suffix";
 
+        $tables[] = "CREATE TABLE IF NOT EXISTS project_releases (
+            id $id,
+            project_id BIGINT NOT NULL,
+            version VARCHAR(40) NOT NULL,
+            title VARCHAR(150) NOT NULL DEFAULT '',
+            notes TEXT NULL,
+            file_name VARCHAR(190) NULL,
+            original_name VARCHAR(190) NULL,
+            file_size BIGINT NOT NULL DEFAULT 0,
+            is_published TINYINT(1) NOT NULL DEFAULT 1,
+            downloads INT NOT NULL DEFAULT 0,
+            released_at VARCHAR(25) NULL,
+            created_at VARCHAR(25) NOT NULL,
+            updated_at VARCHAR(25) NOT NULL
+        )$suffix";
+
         $tables[] = "CREATE TABLE IF NOT EXISTS skills (
             id $id,
             name VARCHAR(80) NOT NULL,
@@ -212,11 +228,13 @@ final class Database
         if ($mysql) {
             // Index dibuat terpisah karena MySQL tidak punya IF NOT EXISTS untuk index.
             self::createIndexIfMissing($pdo, 'project_images', 'idx_project_images_project', 'project_id');
+            self::createIndexIfMissing($pdo, 'project_releases', 'idx_project_releases_project', 'project_id');
             self::createIndexIfMissing($pdo, 'projects', 'idx_projects_status', 'status');
             self::createIndexIfMissing($pdo, 'messages', 'idx_messages_read', 'is_read');
             self::createIndexIfMissing($pdo, 'login_attempts', 'idx_login_attempts_email', 'email');
         } else {
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_images_project ON project_images (project_id)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_releases_project ON project_releases (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_projects_status ON projects (status)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_read ON messages (is_read)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (email)');
@@ -416,6 +434,8 @@ final class Database
                     ]);
                 }
 
+                self::seedRelease($pdo, $projectId, $item['title'], $item['year'], $now);
+
                 $order++;
             }
         }
@@ -517,6 +537,47 @@ SVG;
         }
 
         return $name;
+    }
+
+    /**
+     * Contoh rilis/unduhan untuk project demo.
+     */
+    private static function seedRelease(PDO $pdo, int $projectId, string $title, string $year, string $now): void
+    {
+        $directory = base_path('storage/releases');
+        if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) {
+            return;
+        }
+
+        $fileName = 'demo-release-' . bin2hex(random_bytes(5)) . '.txt';
+        $content = "Rilis demo v1.0.0 — {$title}\n"
+            . "Tahun: {$year}\n\n"
+            . "Ini contoh file rilis. Ganti dengan file asli Anda (ZIP/PDF/APK) lewat\n"
+            . "panel admin: Portofolio -> Edit project -> Releases & unduhan.\n";
+
+        if (@file_put_contents($directory . '/' . $fileName, $content) === false) {
+            return;
+        }
+
+        $statement = $pdo->prepare(
+            'INSERT INTO project_releases (project_id, version, title, notes, file_name, original_name,
+                file_size, is_published, downloads, released_at, created_at, updated_at)
+             VALUES (:project_id, :version, :title, :notes, :file_name, :original_name,
+                :file_size, 1, 0, :released_at, :created_at, :updated_at)'
+        );
+
+        $statement->execute([
+            'project_id' => $projectId,
+            'version' => '1.0.0',
+            'title' => 'Rilis awal',
+            'notes' => "Fitur utama versi pertama:\n- Modul inti aplikasi\n- Antarmuka dasar\n- Perbaikan bug awal",
+            'file_name' => $fileName,
+            'original_name' => \slugify($title) . '-v1.0.0.txt',
+            'file_size' => strlen($content),
+            'released_at' => date('Y-m-d', strtotime($year . '-01-15') ?: time()),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
     }
 
     private static function createIndexIfMissing(PDO $pdo, string $table, string $index, string $column): void

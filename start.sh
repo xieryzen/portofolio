@@ -41,7 +41,18 @@ if [ -z "${MAX_UPLOAD_MB:-}" ] && [ -f .env ]; then
     MAX_UPLOAD_MB="$(grep -E '^MAX_UPLOAD_MB=' .env | tail -n 1 | cut -d '=' -f 2 | tr -d '[:space:]')"
 fi
 
+if [ -z "${RELEASE_MAX_MB:-}" ] && [ -f .env ]; then
+    RELEASE_MAX_MB="$(grep -E '^RELEASE_MAX_MB=' .env | tail -n 1 | cut -d '=' -f 2 | tr -d '[:space:]')"
+fi
+
 MAX_MB="${MAX_UPLOAD_MB:-6}"
+RELEASE_MB="${RELEASE_MAX_MB:-50}"
+
+# upload_max_filesize berlaku untuk semua unggahan, jadi pakai batas terbesar.
+if [ "${RELEASE_MB}" -gt "${MAX_MB}" ] 2>/dev/null; then
+    MAX_MB="${RELEASE_MB}"
+fi
+
 POST_MB=$((MAX_MB + 4))
 
 echo "[portfolio] Menjalankan PHP $(php -r 'echo PHP_VERSION;') di http://${HOST}:${PORT}"

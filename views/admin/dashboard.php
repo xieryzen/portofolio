@@ -4,6 +4,7 @@
 /** @var array<string, int> $projectStats */
 /** @var array<string, int> $userStats */
 /** @var int $unreadMessages */
+/** @var array<string, int> $releaseStats */
 /** @var list<array<string, mixed>> $recentProjects */
 /** @var list<array<string, mixed>> $recentMessages */
 
@@ -51,6 +52,13 @@ $name = explode(' ', (string) ($authUser['name'] ?? 'Admin'))[0];
         <div>
             <strong><?= (int) $unreadMessages ?></strong>
             <span>Pesan belum dibaca</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <span class="sc-icon is-cyan"><?= svg_icon('download') ?></span>
+        <div>
+            <strong><?= number_format((int) ($releaseStats['downloads'] ?? 0), 0, ',', '.') ?></strong>
+            <span>Total unduhan rilis</span>
         </div>
     </div>
 </div>

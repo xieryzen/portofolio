@@ -38,6 +38,7 @@ $router = new Router();
 $router->get('/', [App\Controllers\HomeController::class, 'index']);
 $router->get('/project/{slug}', [App\Controllers\HomeController::class, 'show']);
 $router->get('/media/{file}', [App\Controllers\MediaController::class, 'show']);
+$router->get('/download/{id}', [App\Controllers\DownloadController::class, 'file']);
 $router->post('/contact', [App\Controllers\ContactController::class, 'store']);
 
 // ---- Autentikasi -------------------------------------------------------
@@ -68,6 +69,12 @@ $router->post('/admin/projects/{id}/delete', [App\Controllers\Admin\ProjectContr
 $router->post('/admin/projects/{id}/status', [App\Controllers\Admin\ProjectController::class, 'toggleStatus']);
 $router->post('/admin/projects/{id}/cover', [App\Controllers\Admin\ProjectController::class, 'uploadCover']);
 $router->post('/admin/projects/{id}/cover/remove', [App\Controllers\Admin\ProjectController::class, 'removeCover']);
+
+$router->post('/admin/projects/{id}/releases', [App\Controllers\Admin\ReleaseController::class, 'store']);
+$router->post('/admin/releases/{id}', [App\Controllers\Admin\ReleaseController::class, 'update']);
+$router->post('/admin/releases/{id}/status', [App\Controllers\Admin\ReleaseController::class, 'toggleStatus']);
+$router->post('/admin/releases/{id}/file/remove', [App\Controllers\Admin\ReleaseController::class, 'removeFile']);
+$router->post('/admin/releases/{id}/delete', [App\Controllers\Admin\ReleaseController::class, 'destroy']);
 
 $router->post('/admin/projects/{id}/gallery', [App\Controllers\Admin\GalleryController::class, 'store']);
 $router->post('/admin/gallery/{id}/caption', [App\Controllers\Admin\GalleryController::class, 'updateCaption']);

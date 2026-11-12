@@ -9,6 +9,7 @@ use App\Controllers\Controller;
 use App\Models\Message;
 use App\Models\Profile;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\User;
 
 final class DashboardController extends Controller
@@ -27,6 +28,7 @@ final class DashboardController extends Controller
             'projectStats' => Project::stats(),
             'userStats' => User::stats(),
             'unreadMessages' => Message::unreadCount(),
+            'releaseStats' => Release::stats(),
             'recentProjects' => $recentProjects,
             'recentMessages' => $recentMessages,
         ], 'layouts/admin');
