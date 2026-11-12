@@ -27,10 +27,17 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - **Pencarian project** di beranda (judul, ringkasan, kategori, tech stack) lewat `/?q=kata`.
 - **Dua bahasa (ID/EN)** untuk seluruh antarmuka publik, lengkap dengan tombol ID/EN, cookie
   preferensi bahasa, dan tag `hreflang`.
+- **Konten dua bahasa**: judul, ringkasan, deskripsi project, dan seluruh isi artikel bisa punya
+  versi Inggris sendiri; halaman `?lang=en` memakai versi itu, dan otomatis kembali ke teks
+  Indonesia bila versi Inggris dikosongkan.
 - **Tombol Unduh CV** otomatis muncul di hero, navbar, dan menu HP setelah PDF diunggah dari panel.
 - **Halaman studi kasus** per project: tantangan, solusi, hasil, dan kartu metrik.
 - **Blog/artikel**: daftar artikel dengan pencarian & kategori, halaman detail dengan cover,
   estimasi waktu baca, tag, artikel terkait, feed **RSS** (`/feed.xml`), dan entri sitemap otomatis.
+- **Komentar artikel**: pengunjung bisa berkomentar tanpa akun; komentar tampil setelah disetujui
+  admin (moderasi), dengan honeypot, jeda anti-spam, dan penjaga tautan berlebihan.
+- **Penjadwalan artikel**: tentukan tanggal & jam terbit; artikel masa depan berstatus
+  **Terjadwal**, tidak muncul di blog/sitemap/RSS sampai waktunya tiba.
 - **SEO**: `sitemap.xml` dinamis (beranda + semua project terbit) dan `robots.txt` yang menunjuk sitemap.
 - **PWA**: bisa dipasang ke home screen (Android/iOS), aset di-cache service worker, dan ada
   halaman `/offline` saat koneksi putus. Area admin & unduhan tidak pernah di-cache.
@@ -54,6 +61,9 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Profil: nama, headline, tagline, deskripsi, lokasi, kontak, sosial media, statistik, avatar & cover.
 - Project: CRUD, draft/publik, unggulan, urutan, cover, dokumentasi multi-upload + caption.
 - Rilis project: tambah versi + file unduhan (ZIP, PDF, APK, dokumen), sembunyikan dari publik, ganti/hapus file, hapus rilis, pantau jumlah unduhan.
+- Artikel: draft/publik, **jadwal terbit**, cover, tag, plus kolom versi Inggris (judul, ringkasan, isi).
+- Komentar: daftar menunggu/terbit, setujui, hapus, dengan penanda jumlah komentar baru di menu.
+- Statistik lanjutan: rentang 7/14/30/90 hari, project & artikel paling dilihat, jumlah bot yang difilter, ekspor CSV.
 - Keahlian: tambah/ubah/hapus dengan kategori dan level.
 - Pengguna: daftar akun, ubah role, aktif/nonaktif, hapus (khusus owner).
 - Pesan: tandai dibaca, balas via email, hapus.
@@ -362,8 +372,18 @@ Statistik ringan tanpa layanan eksternal dan **tanpa data pribadi**:
 - yang disimpan hanya path, host referrer, dan penanda bot — bukan IP atau cookie,
 - entri lebih tua dari 365 hari dibersihkan otomatis.
 
-Halaman **Admin → Statistik** (khusus owner) menampilkan total hari ini/7 hari/30 hari/total,
-grafik 14 hari terakhir, halaman populer, dan sumber kunjungan.
+Halaman **Admin → Statistik** (khusus owner) punya pilihan rentang **7 / 14 / 30 / 90 hari**:
+
+- ringkasan: kunjungan hari ini, total rentang, total keseluruhan, jumlah pengunjung yang
+  terdeteksi bot (difilter), dan rata-rata per hari,
+- grafik harian sesuai rentang yang dipilih,
+- tabel **halaman populer**, **project paling dilihat**, **artikel paling dilihat**, dan
+  **sumber kunjungan** (referrer),
+- tombol **Ekspor CSV** (`/admin/stats/export`) berisi deret harian 90 hari, halaman populer,
+  referrer, dan ringkasan — siap dibuka di Excel/Sheets.
+
+Project dan artikel kini juga menghitung jumlah dilihat (`most_viewed`), sehingga konten yang
+paling diminati langsung terlihat di tabel.
 
 ---
 
@@ -376,9 +396,16 @@ Halaman publik tersedia dalam **Indonesia** dan **Inggris**:
 - kunjungan pertama tanpa pilihan mengikuti header `Accept-Language`,
 - tag `<html lang>` dan `hreflang` diisi otomatis untuk SEO.
 
-Isi database (profil, judul project, deskripsi, studi kasus) tidak diterjemahkan otomatis —
-kamus antarmuka ada di `lang/id.php` dan `lang/en.php` bila ingin menyesuaikan teks.
-**Panel admin tetap berbahasa Indonesia.**
+Konten dari database bisa punya dua versi. Di form project dan artikel ada bagian
+**"Versi Inggris (opsional)"**:
+
+- project: judul, ringkasan, deskripsi, tantangan, solusi, dan hasil studi kasus,
+- artikel: judul, ringkasan, dan isi lengkap.
+
+Isi kolom Inggris lalu buka halaman dengan `?lang=en` (atau tombol EN) — halaman memakai versi
+Inggris. Kolom yang dibiarkan kosong otomatis memakai teks Indonesia, jadi terjemahan bisa
+dilengkapi bertahap. Pencarian project/blog mencakup kedua bahasa. Kamus antarmuka tetap ada di
+`lang/id.php` dan `lang/en.php`. **Panel admin tetap berbahasa Indonesia.**
 
 ---
 
@@ -389,6 +416,10 @@ Artikel dikelola dari **Admin → Artikel** (`/admin/posts`):
 - Tulis judul, ringkasan, konten (teks biasa, paragraf dipisah baris kosong), kategori, dan tag.
 - Simpan sebagai **Draft** dulu, lalu ubah ke **Publik** saat siap. Tanggal publikasi diisi otomatis
   saat pertama kali diterbitkan; draft tidak muncul di halaman publik, sitemap, maupun RSS.
+- **Jadwalkan terbit**: ubah isian tanggal/jam publikasi (format `datetime-local`) ke masa depan.
+  Artikel berstatus publik dengan tanggal masa depan diberi label **Terjadwal** di daftar admin,
+  dan baru tampil di blog/sitemap/RSS ketika waktunya lewat — tanpa perlu menyimpan ulang.
+- Versi Inggris opsional untuk judul, ringkasan, dan isi (lihat bagian *Dua bahasa*).
 - Cover opsional (JPG/PNG/WEBP/GIF) — otomatis diperkecil & dikonversi ke WebP seperti gambar lain.
 - Estimasi waktu baca dihitung dari jumlah kata (~200 kata/menit), jumlah dilihat dihitung otomatis.
 
@@ -397,11 +428,22 @@ Halaman publik:
 | URL | Isi |
 | --- | ----------- |
 | `/blog` | Daftar artikel + pencarian `?q=` dan filter kategori `?kategori=` |
-| `/blog/{slug}` | Detail artikel + tag + artikel terkait |
+| `/blog/{slug}` | Detail artikel + tag + artikel terkait + kolom komentar |
+| `/blog/{slug}/comment` | Kirim komentar (POST, menunggu moderasi) |
 | `/feed.xml` | RSS 2.0 (20 artikel terbaru) |
 
 Artikel terbit otomatis masuk ke `sitemap.xml`, dan tiga artikel terbaru tampil di beranda
 (bagian **Artikel terbaru**). Semua label antarmuka blog tersedia dalam ID/EN.
+
+### Komentar artikel
+
+- Pengunjung mengisi nama, email (tidak ditampilkan), dan komentar — tanpa perlu akun.
+- Komentar **tidak langsung tampil**: default menunggu persetujuan di **Admin → Komentar**.
+  Menu itu menampilkan jumlah komentar menunggu; owner/admin bisa **Setujui** atau **Hapus**.
+- Perlindungan spam: honeypot tersembunyi, jeda minimal 30 detik antar-kirim per sesi, batas
+  panjang, dan penolakan komentar dengan lebih dari 2 tautan.
+- Komentar yang disetujui tampil di bawah artikel (`/blog/{slug}#komentar`) beserta jumlahnya;
+  penghapusan komentar dan persetujuan tercatat di **log aktivitas**.
 
 ---
 
@@ -502,7 +544,8 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/profil` | user | Akun & ganti kata sandi |
 | `/admin` | owner/admin | Ringkasan panel |
 | `/admin/profile` | owner/admin | Nama, deskripsi, avatar, cover, kontak |
-| `/admin/posts` | owner/admin | Kelola artikel blog (draft/publik) |
+| `/admin/posts` | owner/admin | Kelola artikel blog (draft/publik/terjadwal) |
+| `/admin/comments` | owner/admin | Moderasi komentar artikel (menunggu/terbit) |
 | `/admin/projects` | owner/admin | CRUD project, cover, dokumentasi |
 | `/admin/projects/{id}/releases` | owner/admin | Tambah rilis project + unggah file |
 | `/admin/releases/{id}` | owner/admin | Edit rilis, ganti file, publikasi, hapus |
@@ -512,7 +555,8 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/admin/backup` | **owner** | Cadangan & restore data |
 | `/admin/backup/database` | **owner** | Unduh berkas database SQLite |
 | `/admin/backup/archive` | **owner** | Unduh ZIP cadangan lengkap |
-| `/admin/stats` | **owner** | Statistik kunjungan |
+| `/admin/stats` | **owner** | Statistik kunjungan (rentang 7/14/30/90 hari) |
+| `/admin/stats/export` | **owner** | Ekspor statistik CSV |
 | `/admin/profile/cv` | owner/admin | Unggah / ganti CV (POST) |
 | `/admin/security` | owner/admin | Aktifkan 2FA, kode pemulihan |
 | `/admin/activity` | **owner** | Log aktivitas (login, 2FA, perubahan) |

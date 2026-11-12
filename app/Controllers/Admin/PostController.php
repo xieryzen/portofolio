@@ -165,16 +165,31 @@ final class PostController extends Controller
     private function formData(): array
     {
         $content = $this->cleanText($this->inputString('content'), 60000);
+        $contentEn = $this->cleanText($this->inputString('content_en'), 60000);
+
+        $publishedInput = $this->inputString('published_at');
+        $publishedAt = '';
+
+        if ($publishedInput !== '') {
+            $timestamp = strtotime(str_replace('T', ' ', $publishedInput));
+            if ($timestamp !== false) {
+                $publishedAt = date('Y-m-d H:i:s', $timestamp);
+            }
+        }
 
         return [
             'title' => $this->inputString('title'),
             'excerpt' => $this->inputString('excerpt'),
             'content' => $content,
+            'title_en' => $this->inputString('title_en'),
+            'excerpt_en' => $this->inputString('excerpt_en'),
+            'content_en' => $contentEn,
             'category' => $this->inputString('category', 'Artikel') ?: 'Artikel',
             'tags' => $this->inputString('tags'),
             'status' => $this->inputString('status') === 'published' ? 'published' : 'draft',
             'is_featured' => $this->input('is_featured') === '1' ? 1 : 0,
             'reading_minutes' => Post::readingMinutes($content),
+            'published_at' => $publishedAt,
         ];
     }
 
@@ -190,12 +205,16 @@ final class PostController extends Controller
                 'excerpt' => 'max:300',
                 'category' => 'max:80',
                 'tags' => 'max:200',
+                'title_en' => 'max:180',
+                'excerpt_en' => 'max:300',
             ],
             [
                 'title' => 'Judul artikel',
                 'excerpt' => 'Ringkasan',
                 'category' => 'Kategori',
                 'tags' => 'Tag',
+                'title_en' => 'Judul (EN)',
+                'excerpt_en' => 'Ringkasan (EN)',
             ]
         );
     }

@@ -5,6 +5,8 @@ $isEdit = $post !== null;
 $action = $isEdit ? '/admin/posts/' . $post['id'] : '/admin/posts';
 $cover = $isEdit ? media_url($post['cover'] ?? null) : null;
 $value = static fn (string $key, string $default = ''): string => (string) \old($key, $post[$key] ?? $default);
+$publishedAtValue = (string) \old('published_at', isset($post['published_at']) && $post['published_at'] ? date('Y-m-d\TH:i', strtotime((string) $post['published_at']) ?: time()) : '');
+$isScheduled = ($post['status'] ?? '') === 'published' && !empty($post['published_at']) && strtotime((string) $post['published_at']) > time();
 $categories = ['Artikel', 'Tutorial', 'Catatan', 'Opini', 'Kabar'];
 ?>
 <div class="admin-head">
@@ -62,8 +64,20 @@ $categories = ['Artikel', 'Tutorial', 'Catatan', 'Opini', 'Kabar'];
                             <option value="draft" <?= $value('status', 'draft') === 'draft' ? 'selected' : '' ?>>Draft — belum tampil</option>
                             <option value="published" <?= $value('status') === 'published' ? 'selected' : '' ?>>Publik — tampil di blog</option>
                         </select>
-                        <span class="hint">Tanggal publikasi diisi otomatis saat pertama kali dipublikasikan.</span>
+                        <span class="hint">Status Publik dengan tanggal di masa depan otomatis menjadi <strong>terjadwal</strong>.</span>
                     </div>
+
+                    <div class="field">
+                        <label for="published_at">Tanggal publikasi</label>
+                        <input class="input" type="datetime-local" id="published_at" name="published_at" value="<?= e($publishedAtValue) ?>">
+                        <span class="hint">Kosongkan untuk memakai waktu sekarang (saat pertama dipublikasikan). Isi tanggal ke depan untuk menjadwalkan.</span>
+                    </div>
+
+                    <?php if ($isScheduled): ?>
+                        <p class="small" style="color:var(--warning)">
+                            <?= svg_icon('clock', 'icon-sm') ?> Terjadwal: terbit <?= e(format_date((string) $post['published_at'], 'd M Y H:i')) ?>.
+                        </p>
+                    <?php endif; ?>
 
                     <label class="checkbox">
                         <input type="checkbox" name="is_featured" value="1" <?= (int) $value('is_featured', '0') === 1 ? 'checked' : '' ?>>
@@ -89,6 +103,31 @@ $categories = ['Artikel', 'Tutorial', 'Catatan', 'Opini', 'Kabar'];
                     <?php if ($isEdit && (int) ($post['reading_minutes'] ?? 0) > 0): ?>
                         <p class="small muted">Estimasi baca: <?= (int) $post['reading_minutes'] ?> menit · <?= number_format((int) $post['views'], 0, ',', '.') ?> kali dilihat</p>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><h2>Versi Inggris (opsional)</h2></div>
+                <div class="card-body form-section">
+                    <p class="small muted" style="margin-bottom:4px">
+                        Tampil saat pengunjung memilih bahasa Inggris. Kosongkan untuk memakai teks Indonesia.
+                    </p>
+
+                    <div class="field">
+                        <label for="title_en">Judul (EN)</label>
+                        <input class="input" type="text" id="title_en" name="title_en" value="<?= e($value('title_en')) ?>" maxlength="180" placeholder="How to speed up a PHP website">
+                    </div>
+
+                    <div class="field">
+                        <label for="excerpt_en">Ringkasan (EN)</label>
+                        <input class="input" type="text" id="excerpt_en" name="excerpt_en" value="<?= e($value('excerpt_en')) ?>" maxlength="300">
+                    </div>
+
+                    <div class="field">
+                        <label for="content_en">Konten (EN)</label>
+                        <textarea class="textarea" id="content_en" name="content_en" rows="12" maxlength="60000" placeholder="Write the English version here…"><?= e($value('content_en')) ?></textarea>
+                        <span class="hint">Paragraf dipisah baris kosong.</span>
+                    </div>
                 </div>
             </div>
 

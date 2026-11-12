@@ -371,6 +371,27 @@ if (!function_exists('t')) {
     }
 }
 
+if (!function_exists('localized')) {
+    /**
+     * Ambil nilai berbahasa sesuai locale aktif, dengan fallback ke versi default.
+     *
+     * @param array<string, mixed> $row
+     */
+    function localized(array $row, string $key, string $fallback = ''): string
+    {
+        if (\App\Lang::locale() === 'en') {
+            $value = trim((string) ($row[$key . '_en'] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        $value = trim((string) ($row[$key] ?? ''));
+
+        return $value !== '' ? $value : $fallback;
+    }
+}
+
 if (!function_exists('locale_is')) {
     function locale_is(string $locale): bool
     {

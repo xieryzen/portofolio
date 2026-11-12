@@ -16,7 +16,7 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
-    private const SCHEMA_VERSION = '5';
+    private const SCHEMA_VERSION = '6';
 
     public static function connection(): PDO
     {
@@ -161,6 +161,12 @@ final class Database
             case_solution TEXT NULL,
             case_result TEXT NULL,
             case_metrics TEXT NULL,
+            title_en VARCHAR(180) NOT NULL DEFAULT '',
+            summary_en VARCHAR(300) NOT NULL DEFAULT '',
+            description_en TEXT NULL,
+            case_challenge_en TEXT NULL,
+            case_solution_en TEXT NULL,
+            case_result_en TEXT NULL,
             project_url VARCHAR(255) NOT NULL DEFAULT '',
             repo_url VARCHAR(255) NOT NULL DEFAULT '',
             cover VARCHAR(190) NULL,
@@ -240,6 +246,9 @@ final class Database
             content TEXT NULL,
             category VARCHAR(80) NOT NULL DEFAULT 'Artikel',
             tags VARCHAR(200) NOT NULL DEFAULT '',
+            title_en VARCHAR(180) NOT NULL DEFAULT '',
+            excerpt_en VARCHAR(300) NOT NULL DEFAULT '',
+            content_en TEXT NULL,
             cover VARCHAR(190) NULL,
             status VARCHAR(20) NOT NULL DEFAULT 'draft',
             is_featured TINYINT(1) NOT NULL DEFAULT 0,
@@ -248,6 +257,17 @@ final class Database
             published_at VARCHAR(25) NULL,
             created_at VARCHAR(25) NOT NULL,
             updated_at VARCHAR(25) NOT NULL
+        )$suffix";
+
+        $tables[] = "CREATE TABLE IF NOT EXISTS post_comments (
+            id $id,
+            post_id INT NOT NULL,
+            name VARCHAR(120) NOT NULL,
+            email VARCHAR(190) NOT NULL DEFAULT '',
+            body TEXT NOT NULL,
+            is_approved TINYINT(1) NOT NULL DEFAULT 0,
+            ip_address VARCHAR(45) NOT NULL DEFAULT '',
+            created_at VARCHAR(25) NOT NULL
         )$suffix";
 
         $tables[] = "CREATE TABLE IF NOT EXISTS visits (
@@ -274,6 +294,17 @@ final class Database
         self::addColumnIfMissing($pdo, 'users', 'totp_enabled_at', 'VARCHAR(25) NULL');
         self::addColumnIfMissing($pdo, 'users', 'totp_recovery', 'TEXT NULL');
 
+        // Kolom versi Inggris (schema v5 → v6).
+        self::addColumnIfMissing($pdo, 'projects', 'title_en', "VARCHAR(180) NOT NULL DEFAULT ''");
+        self::addColumnIfMissing($pdo, 'projects', 'summary_en', "VARCHAR(300) NOT NULL DEFAULT ''");
+        self::addColumnIfMissing($pdo, 'projects', 'description_en', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_challenge_en', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_solution_en', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_result_en', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'posts', 'title_en', "VARCHAR(180) NOT NULL DEFAULT ''");
+        self::addColumnIfMissing($pdo, 'posts', 'excerpt_en', "VARCHAR(300) NOT NULL DEFAULT ''");
+        self::addColumnIfMissing($pdo, 'posts', 'content_en', 'TEXT NULL');
+
         // Kolom studi kasus project (schema v3 → v4).
         self::addColumnIfMissing($pdo, 'projects', 'case_challenge', 'TEXT NULL');
         self::addColumnIfMissing($pdo, 'projects', 'case_solution', 'TEXT NULL');
@@ -290,6 +321,7 @@ final class Database
             self::createIndexIfMissing($pdo, 'activity_logs', 'idx_activity_logs_created', 'created_at');
             self::createIndexIfMissing($pdo, 'visits', 'idx_visits_created', 'created_at');
             self::createIndexIfMissing($pdo, 'posts', 'idx_posts_status', 'status');
+            self::createIndexIfMissing($pdo, 'post_comments', 'idx_comments_post', 'post_id');
         } else {
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_images_project ON project_images (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_releases_project ON project_releases (project_id)');
@@ -299,6 +331,7 @@ final class Database
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs (created_at)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_visits_created ON visits (created_at)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_posts_status ON posts (status)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_comments_post ON post_comments (post_id)');
         }
 
         self::seed($pdo);

@@ -8,9 +8,10 @@
 use App\View;
 
 $releases = $releases ?? [];
+$title = localized($project, 'title');
 $cover = media_url($project['cover'] ?? null);
 $tags = array_filter(array_map('trim', explode(',', (string) ($project['tech_stack'] ?? ''))));
-$paragraphs = array_filter(array_map('trim', preg_split('~\n\s*\n~', (string) ($project['description'] ?? '')) ?: []));
+$paragraphs = array_filter(array_map('trim', preg_split('~\n\s*\n~', localized($project, 'description')) ?: []));
 $meta = array_filter([
     t('project.category') => (string) ($project['category'] ?? ''),
     t('project.client') => (string) ($project['client'] ?? ''),
@@ -19,9 +20,9 @@ $meta = array_filter([
 ], static fn (string $value): bool => $value !== '');
 
 $caseBlocks = array_filter([
-    t('project.case_challenge') => trim((string) ($project['case_challenge'] ?? '')),
-    t('project.case_solution') => trim((string) ($project['case_solution'] ?? '')),
-    t('project.case_result') => trim((string) ($project['case_result'] ?? '')),
+    t('project.case_challenge') => localized($project, 'case_challenge'),
+    t('project.case_solution') => localized($project, 'case_solution'),
+    t('project.case_result') => localized($project, 'case_result'),
 ], static fn (string $value): bool => $value !== '');
 $caseMetrics = [];
 foreach (preg_split('~\R~', (string) ($project['case_metrics'] ?? '')) ?: [] as $line) {
@@ -43,9 +44,9 @@ foreach (preg_split('~\R~', (string) ($project['case_metrics'] ?? '')) ?: [] as 
         <a class="back-link" href="<?= e(app_url('/#karya')) ?>"><?= svg_icon('arrow-left') ?> <?= e(t('project.back')) ?></a>
 
         <span class="eyebrow"><span class="dot"></span> <?= e((string) ($project['category'] ?: t('project.fallback'))) ?></span>
-        <h1 class="mt-2"><?= e((string) $project['title']) ?></h1>
-        <?php if (!empty($project['summary'])): ?>
-            <p class="lead"><?= e((string) $project['summary']) ?></p>
+        <h1 class="mt-2"><?= e($title) ?></h1>
+        <?php if (localized($project, 'summary') !== ''): ?>
+            <p class="lead"><?= e(localized($project, 'summary')) ?></p>
         <?php endif; ?>
 
         <?php if ($meta !== []): ?>
@@ -61,9 +62,9 @@ foreach (preg_split('~\R~', (string) ($project['case_metrics'] ?? '')) ?: [] as 
 
         <div class="detail-cover">
             <?php if ($cover): ?>
-                <img src="<?= e($cover) ?>" alt="<?= e(t('project.cover_alt')) ?> <?= e((string) $project['title']) ?>">
+                <img src="<?= e($cover) ?>" alt="<?= e(t('project.cover_alt')) ?> <?= e($title) ?>">
             <?php else: ?>
-                <div class="cover-fallback"><?= e(initials((string) $project['title'])) ?></div>
+                <div class="cover-fallback"><?= e(initials($title)) ?></div>
             <?php endif; ?>
         </div>
     </div>
@@ -92,8 +93,8 @@ foreach (preg_split('~\R~', (string) ($project['case_metrics'] ?? '')) ?: [] as 
                             <?php foreach ($images as $image): ?>
                                 <button type="button" class="doc-item"
                                     data-lightbox="<?= e(media_url((string) $image['file_name']) ?? '') ?>"
-                                    data-caption="<?= e((string) ($image['caption'] ?: $project['title'])) ?>">
-                                    <img src="<?= e(media_url((string) $image['file_name']) ?? '') ?>" alt="<?= e((string) ($image['caption'] ?: $project['title'])) ?>" loading="lazy">
+                                    data-caption="<?= e((string) ($image['caption'] ?: $title)) ?>">
+                                    <img src="<?= e(media_url((string) $image['file_name']) ?? '') ?>" alt="<?= e((string) ($image['caption'] ?: $title)) ?>" loading="lazy">
                                     <?php if (!empty($image['caption'])): ?>
                                         <figcaption><?= e((string) $image['caption']) ?></figcaption>
                                     <?php endif; ?>

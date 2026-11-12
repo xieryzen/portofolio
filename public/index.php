@@ -39,6 +39,7 @@ $router->get('/', [App\Controllers\HomeController::class, 'index']);
 $router->get('/project/{slug}', [App\Controllers\HomeController::class, 'show']);
 $router->get('/blog', [App\Controllers\BlogController::class, 'index']);
 $router->get('/blog/{slug}', [App\Controllers\BlogController::class, 'show']);
+$router->post('/blog/{slug}/comment', [App\Controllers\CommentController::class, 'store']);
 $router->get('/feed.xml', [App\Controllers\FeedController::class, 'index']);
 $router->get('/media/{file}', [App\Controllers\MediaController::class, 'show']);
 $router->get('/download/{id}', [App\Controllers\DownloadController::class, 'file']);
@@ -129,7 +130,12 @@ $router->post('/admin/security/recovery', [App\Controllers\Admin\SecurityControl
 $router->get('/admin/activity', [App\Controllers\Admin\ActivityController::class, 'index']);
 
 // ---- Cadangan (backup/restore) -----------------------------------------
+$router->get('/admin/comments', [App\Controllers\Admin\CommentController::class, 'index']);
+$router->post('/admin/comments/{id}/approve', [App\Controllers\Admin\CommentController::class, 'approve']);
+$router->post('/admin/comments/{id}/delete', [App\Controllers\Admin\CommentController::class, 'destroy']);
+
 $router->get('/admin/stats', [App\Controllers\Admin\StatsController::class, 'index']);
+$router->get('/admin/stats/export', [App\Controllers\Admin\StatsController::class, 'export']);
 $router->get('/admin/backup', [App\Controllers\Admin\BackupController::class, 'index']);
 $router->get('/admin/backup/database', [App\Controllers\Admin\BackupController::class, 'database']);
 $router->get('/admin/backup/archive', [App\Controllers\Admin\BackupController::class, 'archive']);
