@@ -44,6 +44,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Pengguna: daftar akun, ubah role, aktif/nonaktif, hapus (khusus owner).
 - Pesan: tandai dibaca, balas via email, hapus.
 - Pengaturan: judul situs, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
+- **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
+  lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
 
 ---
 
@@ -280,6 +282,7 @@ folder `storage/` agar database, upload, dan file rilis tetap aman.
 | `ALLOW_REGISTRATION` | `true` | Izinkan pendaftaran user. |
 | `MAX_UPLOAD_MB` | `6` | Batas ukuran tiap gambar. |
 | `RELEASE_MAX_MB` | `50` | Batas ukuran tiap file rilis/unduhan (maks 500). |
+| `BACKUP_MAX_MB` | `200` | Batas ukuran ZIP cadangan saat restore (maks 1024). |
 | `ACCENT_COLOR` | `#6d8bff` | Warna aksen awal. |
 | `TRUST_PROXY` | `true` | Percayai header `X-Forwarded-Proto` (HTTPS). |
 
@@ -319,6 +322,9 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/admin/skills` | owner/admin | Keahlian & level |
 | `/admin/messages` | owner/admin | Pesan masuk |
 | `/admin/users` | **owner** | Kelola akun & role |
+| `/admin/backup` | **owner** | Cadangan & restore data |
+| `/admin/backup/database` | **owner** | Unduh berkas database SQLite |
+| `/admin/backup/archive` | **owner** | Unduh ZIP cadangan lengkap |
 | `/admin/settings` | **owner** | Identitas situs, warna, akun owner |
 
 ---

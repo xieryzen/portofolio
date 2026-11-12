@@ -100,4 +100,11 @@ $router->get('/admin/settings', [App\Controllers\Admin\SettingsController::class
 $router->post('/admin/settings', [App\Controllers\Admin\SettingsController::class, 'update']);
 $router->post('/admin/settings/password', [App\Controllers\Admin\SettingsController::class, 'updatePassword']);
 
+// ---- Cadangan (backup/restore) -----------------------------------------
+$router->get('/admin/backup', [App\Controllers\Admin\BackupController::class, 'index']);
+$router->get('/admin/backup/database', [App\Controllers\Admin\BackupController::class, 'database']);
+$router->get('/admin/backup/archive', [App\Controllers\Admin\BackupController::class, 'archive']);
+$router->get('/admin/backup/file/{name}', [App\Controllers\Admin\BackupController::class, 'downloadBackup']);
+$router->post('/admin/backup/restore', [App\Controllers\Admin\BackupController::class, 'restore']);
+
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

@@ -86,6 +86,9 @@ $menu = [
         <div>
             <p class="side-label">Sistem</p>
             <nav class="side-nav" aria-label="Navigasi sistem">
+                <a href="<?= e(app_url('/admin/backup')) ?>" class="<?= is_active_path('/admin/backup') ? 'is-active' : '' ?>">
+                    <?= svg_icon('database') ?> Cadangan
+                </a>
                 <a href="<?= e(app_url('/admin/settings')) ?>" class="<?= is_active_path('/admin/settings') ? 'is-active' : '' ?>">
                     <?= svg_icon('settings') ?> Pengaturan
                 </a>

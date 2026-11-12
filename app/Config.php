@@ -53,6 +53,7 @@ final class Config
             'registration'    => self::envBool('ALLOW_REGISTRATION', true),
             'max_upload_mb'   => max(1, (int) self::env('MAX_UPLOAD_MB', '6')),
             'release_max_mb'  => max(1, min(500, (int) self::env('RELEASE_MAX_MB', '50'))),
+            'backup_max_mb'   => max(5, min(1024, (int) self::env('BACKUP_MAX_MB', '200'))),
             'accent'          => self::env('ACCENT_COLOR', '#6d8bff'),
         ];
 
