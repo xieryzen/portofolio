@@ -45,12 +45,21 @@ if [ -z "${RELEASE_MAX_MB:-}" ] && [ -f .env ]; then
     RELEASE_MAX_MB="$(grep -E '^RELEASE_MAX_MB=' .env | tail -n 1 | cut -d '=' -f 2 | tr -d '[:space:]')"
 fi
 
+if [ -z "${BACKUP_MAX_MB:-}" ] && [ -f .env ]; then
+    BACKUP_MAX_MB="$(grep -E '^BACKUP_MAX_MB=' .env | tail -n 1 | cut -d '=' -f 2 | tr -d '[:space:]')"
+fi
+
 MAX_MB="${MAX_UPLOAD_MB:-6}"
 RELEASE_MB="${RELEASE_MAX_MB:-50}"
+BACKUP_MB="${BACKUP_MAX_MB:-200}"
 
 # upload_max_filesize berlaku untuk semua unggahan, jadi pakai batas terbesar.
 if [ "${RELEASE_MB}" -gt "${MAX_MB}" ] 2>/dev/null; then
     MAX_MB="${RELEASE_MB}"
+fi
+
+if [ "${BACKUP_MB}" -gt "${MAX_MB}" ] 2>/dev/null; then
+    MAX_MB="${BACKUP_MB}"
 fi
 
 POST_MB=$((MAX_MB + 4))
