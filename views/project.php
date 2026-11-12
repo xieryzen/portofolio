@@ -2,10 +2,12 @@
 /** @var array<string, mixed> $project */
 /** @var list<array<string, mixed>> $images */
 /** @var list<array<string, mixed>> $related */
+/** @var list<array<string, mixed>> $releases */
 /** @var array<string, mixed> $profile */
 
 use App\View;
 
+$releases = $releases ?? [];
 $cover = media_url($project['cover'] ?? null);
 $tags = array_filter(array_map('trim', explode(',', (string) ($project['tech_stack'] ?? ''))));
 $paragraphs = array_filter(array_map('trim', preg_split('~\n\s*\n~', (string) ($project['description'] ?? '')) ?: []));
@@ -124,6 +126,62 @@ $meta = array_filter([
         </div>
     </div>
 </section>
+
+
+<?php if ($releases !== []): ?>
+<section class="section-sm" style="border-top:1px solid var(--line)" id="unduhan">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <span class="section-label">Unduhan</span>
+                <h2 class="section-title" style="font-size:clamp(1.5rem,2.6vw,2.1rem)">Rilis &amp; unduhan</h2>
+                <p class="section-lead">Riwayat versi project ini. Unduh versi terbaru atau versi sebelumnya.</p>
+            </div>
+            <span class="badge badge-accent"><?= svg_icon('package', 'icon-sm') ?> Versi terbaru v<?= e((string) $releases[0]['version']) ?></span>
+        </div>
+
+        <div class="release-list">
+            <?php foreach ($releases as $index => $release): ?>
+                <article class="release-item">
+                    <div class="release-main">
+                        <div class="release-version">
+                            <strong>v<?= e((string) $release['version']) ?></strong>
+                            <?php if ($index === 0): ?>
+                                <span class="badge badge-success">Terbaru</span>
+                            <?php endif; ?>
+                            <?php if (!empty($release['title'])): ?>
+                                <span class="small muted"><?= e((string) $release['title']) ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="release-meta">
+                            <span><?= svg_icon('calendar', 'icon-sm') ?> <?= e(format_date($release['released_at'], 'd M Y')) ?></span>
+                            <?php if ($release['file_name']): ?>
+                                <span><?= svg_icon('package', 'icon-sm') ?> <?= e(format_bytes((int) $release['file_size'])) ?></span>
+                            <?php endif; ?>
+                            <span><?= svg_icon('download', 'icon-sm') ?> <?= number_format((int) $release['downloads'], 0, ',', '.') ?> unduhan</span>
+                        </div>
+
+                        <?php if (!empty($release['notes'])): ?>
+                            <div class="release-notes"><?= nl2br(e((string) $release['notes'])) ?></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="release-actions">
+                        <?php if ($release['file_name']): ?>
+                            <a class="btn btn-primary btn-sm" href="<?= e(app_url('/download/' . $release['id'])) ?>" rel="nofollow">
+                                <?= svg_icon('download', 'icon-sm') ?> Unduh <?= e(release_file_label($release['original_name'] ?? null, $release['file_name'] ?? null)) ?>
+                            </a>
+                        <?php else: ?>
+                            <span class="badge badge-muted">Tidak ada file</span>
+                        <?php endif; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </div>
+</section>
+<?php endif; ?>
 
 <?php if ($related !== []): ?>
 <section class="section-sm" style="border-top:1px solid var(--line)">

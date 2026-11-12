@@ -7,6 +7,7 @@ namespace App\Controllers\Admin;
 use App\Auth;
 use App\Controllers\Controller;
 use App\Models\Project;
+use App\Models\Release;
 use App\Uploader;
 use App\Validator;
 
@@ -40,6 +41,7 @@ final class ProjectController extends Controller
             'title' => 'Tambah Project',
             'project' => null,
             'images' => [],
+            'releases' => [],
         ], 'layouts/admin');
     }
 
@@ -84,6 +86,7 @@ final class ProjectController extends Controller
             'title' => 'Edit Project',
             'project' => $project,
             'images' => Project::images((int) $project['id']),
+            'releases' => Release::forProject((int) $project['id']),
         ], 'layouts/admin');
     }
 

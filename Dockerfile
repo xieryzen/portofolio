@@ -7,7 +7,7 @@ WORKDIR /app
 
 COPY . /app
 
-RUN mkdir -p storage/uploads storage/sessions storage/logs \
+RUN mkdir -p storage/uploads storage/releases storage/sessions storage/logs \
     && chmod -R 775 storage \
     && chmod +x start.sh
 

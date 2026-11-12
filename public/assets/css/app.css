@@ -1374,3 +1374,68 @@ table.table td.actions form { display: inline-block; }
     .project-card:hover { transform: none; }
 }
 .upload-preview .icon { display: block; }
+
+/* ---------- Rilis & unduhan ---------- */
+.release-form {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 14px;
+    background: var(--surface-3);
+}
+
+.release-admin-list { display: grid; gap: 12px; }
+
+.release-admin-item {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface-2);
+}
+
+.release-admin-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.release-list { display: grid; gap: 14px; }
+
+.release-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface-2);
+}
+
+.release-main { display: grid; gap: 8px; flex: 1 1 320px; min-width: 0; }
+
+.release-version { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.release-version strong { font-size: 1.05rem; letter-spacing: -.01em; }
+
+.release-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted-2); }
+.release-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.release-meta .icon { width: 14px; height: 14px; }
+
+.release-notes { font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+
+.release-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.release-edit summary { cursor: pointer; font-size: 12.5px; color: var(--muted-2); }
+.release-edit[open] summary { margin-bottom: 12px; }
+.release-edit form { display: grid; gap: 12px; padding-top: 12px; }
+
+@media (max-width: 640px) {
+    .release-item { padding: 16px; }
+    .release-item .release-actions { width: 100%; }
+    .release-item .release-actions .btn { width: 100%; justify-content: center; }
+}

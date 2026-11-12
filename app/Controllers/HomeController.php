@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Models\Profile;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\Skill;
 
 final class HomeController extends Controller
@@ -51,6 +52,7 @@ final class HomeController extends Controller
             'title' => (string) $project['title'],
             'project' => $project,
             'images' => Project::images((int) $project['id']),
+            'releases' => Release::forProject((int) $project['id'], true),
             'related' => Project::related((int) $project['id'], 3),
             'profile' => Profile::get(),
             'metaDescription' => (string) $project['summary'],

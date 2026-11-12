@@ -375,6 +375,42 @@ if (!function_exists('registration_open')) {
     }
 }
 
+if (!function_exists('format_bytes')) {
+    function format_bytes(int|float $bytes): string
+    {
+        $bytes = max(0, (float) $bytes);
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $index = 0;
+
+        while ($bytes >= 1024 && $index < count($units) - 1) {
+            $bytes /= 1024;
+            $index++;
+        }
+
+        $decimals = $index === 0 ? 0 : ($bytes < 10 ? 1 : 0);
+
+        return number_format($bytes, $decimals, ',', '.') . ' ' . $units[$index];
+    }
+}
+
+if (!function_exists('release_file_label')) {
+    /**
+     * Label ekstensi file rilis untuk ditampilkan di UI.
+     */
+    function release_file_label(?string $originalName, ?string $fileName = null): string
+    {
+        $source = $originalName ?: $fileName;
+
+        if (!$source) {
+            return 'TANPA FILE';
+        }
+
+        $extension = strtolower((string) pathinfo($source, PATHINFO_EXTENSION));
+
+        return $extension !== '' ? strtoupper($extension) : 'FILE';
+    }
+}
+
 if (!function_exists('initials')) {
     function initials(string $name): string
     {
@@ -481,6 +517,9 @@ if (!function_exists('svg_icon')) {
             'filter' => '<path d="M3 5h18l-7 8v6l-4-2v-4Z"/>',
             'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
             'briefcase' => '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/>',
+            'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
+            'package' => '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+            'file-text' => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
         ];
 
         $inner = $paths[$name] ?? $paths['sparkles'];

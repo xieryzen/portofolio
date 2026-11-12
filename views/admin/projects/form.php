@@ -1,12 +1,15 @@
 <?php
 /** @var array<string, mixed>|null $project */
 /** @var list<array<string, mixed>> $images */
+/** @var list<array<string, mixed>> $releases */
 
 $isEdit = $project !== null;
 $action = $isEdit ? '/admin/projects/' . $project['id'] : '/admin/projects';
 $cover = $isEdit ? media_url($project['cover'] ?? null) : null;
 $value = static fn (string $key, string $default = ''): string => (string) \old($key, $project[$key] ?? $default);
 $selected = static fn (string $key, string $expected): string => $value($key) === $expected ? 'selected' : '';
+$releases = $releases ?? [];
+$releaseMaxMb = \App\Uploader::maxReleaseMb();
 $categories = ['Web App', 'Website', 'Dashboard', 'Mobile App', 'API / Backend', 'Desain UI/UX', 'Lainnya'];
 ?>
 
@@ -242,14 +245,164 @@ $categories = ['Web App', 'Website', 'Dashboard', 'Mobile App', 'API / Backend',
         </div>
     </div>
 
+
+    <div class="card mt-2" id="rilis">
+        <div class="card-head">
+            <h2>Rilis &amp; unduhan</h2>
+            <div class="actions"><span class="badge badge-muted"><?= count($releases) ?> rilis</span></div>
+        </div>
+        <div class="card-body" style="display:grid;gap:20px">
+            <p class="small muted">
+                Unggah file versi project (ZIP source, APK, PDF, dan sebagainya) agar pengunjung bisa mengunduhnya.
+                Maksimal <?= e(format_bytes($releaseMaxMb * 1024 * 1024)) ?> per file.
+            </p>
+
+            <form method="post" action="<?= e(app_url('/admin/projects/' . $project['id'] . '/releases')) ?>" enctype="multipart/form-data" class="release-form">
+                <?= csrf_field() ?>
+                <div class="form-row">
+                    <div class="field">
+                        <label for="release-version">Nomor versi <span class="hint">*</span></label>
+                        <input class="input" type="text" id="release-version" name="version" placeholder="1.0.0" maxlength="40" required>
+                    </div>
+                    <div class="field">
+                        <label for="release-title">Judul rilis</label>
+                        <input class="input" type="text" id="release-title" name="title" placeholder="Rilis stabil pertama" maxlength="150">
+                    </div>
+                    <div class="field">
+                        <label for="release-date">Tanggal rilis</label>
+                        <input class="input" type="date" id="release-date" name="released_at" value="<?= e(date('Y-m-d')) ?>">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="release-notes">Catatan perubahan</label>
+                    <textarea class="textarea" id="release-notes" name="notes" rows="4" maxlength="20000" placeholder="Contoh:&#10;- Menambahkan modul laporan penjualan&#10;- Perbaikan bug login"></textarea>
+                    <span class="hint">Tulis satu poin per baris. Tampil di halaman publik sebagai changelog.</span>
+                </div>
+
+                <div class="field">
+                    <label for="release-file">File rilis <span class="hint">(opsional)</span></label>
+                    <input class="input" type="file" id="release-file" name="file" style="padding:9px">
+                    <span class="hint">ZIP, RAR, 7Z, PDF, APK, TXT, MD, CSV, DOC/DOCX, XLS/XLSX, PPT/PPTX, PNG, JPG, WEBP, GIF · maks <?= $releaseMaxMb ?> MB</span>
+                </div>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="is_published" value="1" checked>
+                    Tampilkan rilis ini di halaman publik
+                </label>
+
+                <div><button class="btn btn-soft btn-sm" type="submit"><?= svg_icon('package', 'icon-sm') ?> Tambah rilis</button></div>
+            </form>
+
+            <?php if ($releases === []): ?>
+                <div class="empty-state" style="padding:26px 12px">
+                    <?= svg_icon('package') ?>
+                    <h3>Belum ada rilis</h3>
+                    <p>Tambahkan rilis pertama agar pengunjung bisa mengunduh hasil project Anda.</p>
+                </div>
+            <?php else: ?>
+                <div class="release-admin-list">
+                    <?php foreach ($releases as $release): ?>
+                        <div class="release-admin-item">
+                            <div class="release-admin-head">
+                                <div style="min-width:0">
+                                    <div class="release-version">
+                                        <strong>v<?= e((string) $release['version']) ?></strong>
+                                        <?php if ((int) $release['is_published'] === 1): ?>
+                                            <span class="badge badge-success">Publik</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-amber">Draft</span>
+                                        <?php endif; ?>
+                                        <span class="badge badge-muted"><?= e(release_file_label($release['original_name'] ?? null, $release['file_name'] ?? null)) ?></span>
+                                        <?php if (!empty($release['title'])): ?>
+                                            <span class="small muted"><?= e((string) $release['title']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="release-meta">
+                                        <span><?= svg_icon('calendar', 'icon-sm') ?> <?= e(format_date($release['released_at'], 'd M Y')) ?></span>
+                                        <span><?= svg_icon('package', 'icon-sm') ?> <?= $release['file_name'] ? e(format_bytes((int) $release['file_size'])) : 'Tanpa file' ?></span>
+                                        <span><?= svg_icon('download', 'icon-sm') ?> <?= number_format((int) $release['downloads'], 0, ',', '.') ?> unduhan</span>
+                                    </div>
+                                </div>
+                                <div class="release-actions">
+                                    <?php if ($release['file_name']): ?>
+                                        <a class="btn btn-ghost btn-sm" href="<?= e(app_url('/download/' . $release['id'])) ?>"><?= svg_icon('download', 'icon-sm') ?> Unduh</a>
+                                    <?php endif; ?>
+                                    <form method="post" action="<?= e(app_url('/admin/releases/' . $release['id'] . '/status')) ?>">
+                                        <?= csrf_field() ?>
+                                        <button class="btn btn-ghost btn-sm" type="submit"><?= (int) $release['is_published'] === 1 ? 'Sembunyikan' : 'Publikasikan' ?></button>
+                                    </form>
+                                    <form method="post" action="<?= e(app_url('/admin/releases/' . $release['id'] . '/delete')) ?>"
+                                        data-confirm="Rilis ini beserta file unduhannya akan dihapus permanen." data-confirm-title="Hapus rilis?">
+                                        <?= csrf_field() ?>
+                                        <button class="btn btn-danger btn-sm" type="submit" title="Hapus rilis"><?= svg_icon('trash', 'icon-sm') ?></button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($release['notes'])): ?>
+                                <p class="release-notes"><?= nl2br(e((string) $release['notes'])) ?></p>
+                            <?php endif; ?>
+
+                            <details class="release-edit">
+                                <summary>Edit rilis</summary>
+                                <form method="post" action="<?= e(app_url('/admin/releases/' . $release['id'])) ?>" enctype="multipart/form-data">
+                                    <?= csrf_field() ?>
+                                    <div class="form-row">
+                                        <div class="field">
+                                            <label for="rv-<?= (int) $release['id'] ?>">Nomor versi</label>
+                                            <input class="input" type="text" id="rv-<?= (int) $release['id'] ?>" name="version" value="<?= e((string) $release['version']) ?>" maxlength="40" required>
+                                        </div>
+                                        <div class="field">
+                                            <label for="rt-<?= (int) $release['id'] ?>">Judul rilis</label>
+                                            <input class="input" type="text" id="rt-<?= (int) $release['id'] ?>" name="title" value="<?= e((string) ($release['title'] ?? '')) ?>" maxlength="150">
+                                        </div>
+                                        <div class="field">
+                                            <label for="rd-<?= (int) $release['id'] ?>">Tanggal rilis</label>
+                                            <input class="input" type="date" id="rd-<?= (int) $release['id'] ?>" name="released_at" value="<?= e((string) $release['released_at']) ?>">
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label for="rn-<?= (int) $release['id'] ?>">Catatan perubahan</label>
+                                        <textarea class="textarea" id="rn-<?= (int) $release['id'] ?>" name="notes" rows="4" maxlength="20000"><?= e((string) ($release['notes'] ?? '')) ?></textarea>
+                                    </div>
+                                    <div class="field">
+                                        <label for="rf-<?= (int) $release['id'] ?>">Ganti file <span class="hint">(biarkan kosong jika tidak diganti)</span></label>
+                                        <input class="input" type="file" id="rf-<?= (int) $release['id'] ?>" name="file" style="padding:9px">
+                                        <span class="hint"><?= $release['file_name'] ? e('File saat ini: ' . (string) ($release['original_name'] ?: $release['file_name'])) : 'Belum ada file.' ?></span>
+                                    </div>
+                                    <label class="checkbox">
+                                        <input type="checkbox" name="is_published" value="1" <?= (int) $release['is_published'] === 1 ? 'checked' : '' ?>>
+                                        Tampilkan di halaman publik
+                                    </label>
+                                    <div class="release-actions">
+                                        <button class="btn btn-soft btn-sm" type="submit"><?= svg_icon('check', 'icon-sm') ?> Simpan rilis</button>
+                                    </div>
+                                </form>
+
+                                <?php if ($release['file_name']): ?>
+                                    <form method="post" action="<?= e(app_url('/admin/releases/' . $release['id'] . '/file/remove')) ?>"
+                                        data-confirm="File rilis akan dihapus, catatan versinya tetap tersimpan." data-confirm-title="Hapus file?">
+                                        <?= csrf_field() ?>
+                                        <button class="btn btn-danger btn-sm" type="submit"><?= svg_icon('trash', 'icon-sm') ?> Hapus file saja</button>
+                                    </form>
+                                <?php endif; ?>
+                            </details>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
     <div class="card mt-2" style="border-color:rgba(251,113,133,.25)">
         <div class="card-body flex between flex-wrap">
             <div>
                 <strong class="small">Zona berbahaya</strong>
-                <p class="small muted mt-1">Menghapus project juga menghapus semua gambar dokumentasinya.</p>
+                <p class="small muted mt-1">Menghapus project juga menghapus semua gambar dokumentasi dan file rilisnya.</p>
             </div>
             <form method="post" action="<?= e(app_url('/admin/projects/' . $project['id'] . '/delete')) ?>"
-                data-confirm="Project beserta seluruh dokumentasinya akan dihapus permanen." data-confirm-title="Hapus project?">
+                data-confirm="Project beserta seluruh dokumentasi dan file rilisnya akan dihapus permanen." data-confirm-title="Hapus project?">
                 <?= csrf_field() ?>
                 <button class="btn btn-danger btn-sm" type="submit"><?= svg_icon('trash', 'icon-sm') ?> Hapus project</button>
             </form>

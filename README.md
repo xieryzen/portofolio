@@ -17,6 +17,7 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Hero profil: nama, headline, tagline, foto, status ketersediaan, statistik pengalaman.
 - Grid project unggulan + arsip project, halaman detail project dengan tech stack & tautan.
 - Galeri dokumentasi dengan lightbox (klik gambar untuk memperbesar).
+- **Rilis & unduhan per project**: riwayat versi, catatan perubahan (changelog), file unduhan, ukuran, jumlah unduhan, dan penanda versi terbaru.
 - Bagian "Tentang" berisi deskripsi panjang dan bar keahlian per kategori.
 - Formulir kontak yang tersimpan ke panel admin (dengan honeypot + anti-spam).
 - Responsif penuh, tema gelap, animasi halus, mendukung `prefers-reduced-motion`.
@@ -30,6 +31,7 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Ringkasan statistik + status kelengkapan profil + pesan terbaru.
 - Profil: nama, headline, tagline, deskripsi, lokasi, kontak, sosial media, statistik, avatar & cover.
 - Project: CRUD, draft/publik, unggulan, urutan, cover, dokumentasi multi-upload + caption.
+- Rilis project: tambah versi + file unduhan (ZIP, PDF, APK, dokumen), sembunyikan dari publik, ganti/hapus file, hapus rilis, pantau jumlah unduhan.
 - Keahlian: tambah/ubah/hapus dengan kategori dan level.
 - Pengguna: daftar akun, ubah role, aktif/nonaktif, hapus (khusus owner).
 - Pesan: tandai dibaca, balas via email, hapus.
@@ -61,8 +63,8 @@ Buka `http://localhost:8080`.
 > (atau ubah `OWNER_EMAIL` / `OWNER_PASSWORD` sebelum deploy pertama).
 
 Akun owner otomatis dibuat saat aplikasi pertama kali dijalankan. Database, tabel, dan
-**3 contoh project + dokumentasi demo** dibuat otomatis — tidak perlu import SQL.
-Contoh project bisa dihapus kapan saja dari panel admin.
+**3 contoh project + dokumentasi + satu rilis demo (`v1.0.0`)** dibuat otomatis — tidak perlu
+import SQL. Contoh project dan rilis bisa dihapus kapan saja dari panel admin.
 
 ### Persyaratan
 - PHP **8.3** atau lebih baru
@@ -109,11 +111,18 @@ Jika egg memakai install script Git, file akan di-clone otomatis saat instalasi.
 - Login dengan akun owner dari variabel egg / `.env`.
 
 ### 5. Batas upload
-`start.sh` otomatis menaikkan `upload_max_filesize` & `post_max_size` sesuai `MAX_UPLOAD_MB`
-(default 6 MB). Jika memakai Nginx/Apache, sesuaikan juga:
+Ada dua batas unggahan:
 
-- Nginx: `client_max_body_size 8M;`
-- Apache: `php_value upload_max_filesize 6M` dan `php_value post_max_size 10M`
+| Jenis | Variabel | Default |
+| ----- | -------- | ------- |
+| Gambar (cover, avatar, dokumentasi) | `MAX_UPLOAD_MB` | 6 MB |
+| File rilis project | `RELEASE_MAX_MB` | 50 MB (maks 500) |
+
+`start.sh` memakai nilai terbesar dari keduanya untuk `upload_max_filesize` dan menambah 4 MB
+untuk `post_max_size`. Jika memakai Nginx/Apache, sesuaikan juga:
+
+- Nginx: `client_max_body_size 60M;` (samakan dengan `RELEASE_MAX_MB` + buffer)
+- Apache: `php_value upload_max_filesize 50M` dan `php_value post_max_size 54M`
 
 ### 6. Hal penting di Pterodactyl
 | Hal | Keterangan |
@@ -123,7 +132,7 @@ Jika egg memakai install script Git, file akan di-clone otomatis saat instalasi.
 | MySQL (opsional) | Buat database di tab **Databases**, lalu isi `DB_CONNECTION=mysql`, `DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` di `.env`. |
 | File `.env` | Dibuat otomatis oleh `start.sh` pada start pertama (dengan `APP_KEY` acak). Edit lewat File Manager. |
 | Permission | `storage/` dibuat otomatis 775. Jika error tulis, jalankan: `chmod -R 775 storage` lewat console. |
-| Backup | Salin `storage/` (berisi database + semua gambar). |
+| Backup | Salin `storage/` (berisi database, semua gambar, dan file rilis). |
 | Restart | Panel → Restart. Tidak ada proses build, jadi cepat. |
 
 ### Reverse proxy / domain (opsional)
@@ -184,6 +193,7 @@ docker run -d -p 8080:8080 -v portfolio_storage:/app/storage --name portfolio po
 | `OWNER_PASSWORD` | `Owner12345!` | Kata sandi owner awal. |
 | `ALLOW_REGISTRATION` | `true` | Izinkan pendaftaran user. |
 | `MAX_UPLOAD_MB` | `6` | Batas ukuran tiap gambar. |
+| `RELEASE_MAX_MB` | `50` | Batas ukuran tiap file rilis/unduhan (maks 500). |
 | `ACCENT_COLOR` | `#6d8bff` | Warna aksen awal. |
 | `TRUST_PROXY` | `true` | Percayai header `X-Forwarded-Proto` (HTTPS). |
 
@@ -209,12 +219,15 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/` | publik | Portofolio lengkap + formulir kontak |
 | `/project/{slug}` | publik | Detail project + galeri dokumentasi |
 | `/media/{file}` | publik | Gambar upload (validasi nama & tipe) |
+| `/download/{id}` | publik* | Unduh file rilis (*hanya rilis & project berstatus publik; admin selalu bisa) |
 | `/login`, `/register` | publik | Autentikasi |
 | `/dashboard` | user | Portofolio versi anggota |
 | `/profil` | user | Akun & ganti kata sandi |
 | `/admin` | owner/admin | Ringkasan panel |
 | `/admin/profile` | owner/admin | Nama, deskripsi, avatar, cover, kontak |
 | `/admin/projects` | owner/admin | CRUD project, cover, dokumentasi |
+| `/admin/projects/{id}/releases` | owner/admin | Tambah rilis project + unggah file |
+| `/admin/releases/{id}` | owner/admin | Edit rilis, ganti file, publikasi, hapus |
 | `/admin/skills` | owner/admin | Keahlian & level |
 | `/admin/messages` | owner/admin | Pesan masuk |
 | `/admin/users` | **owner** | Kelola akun & role |
@@ -248,7 +261,7 @@ app/                 kode inti (Config, Database, Auth, Router, Validator, Uploa
 bin/console          utilitas CLI
 public/              document root: index.php, assets, .htaccess
 views/               template (layout, halaman publik, admin, auth, error)
-storage/             database SQLite, upload gambar, sesi, log  ← WAJIB writable, tidak masuk Git
+storage/             database SQLite, upload gambar, file rilis, sesi, log  ← WAJIB writable, tidak masuk Git
 deploy/              egg Pterodactyl, contoh nginx, Dockerfile
 router.php           router untuk PHP built-in server
 start.sh             entry point (Pterodactyl/Docker)
@@ -257,7 +270,8 @@ start.sh             entry point (Pterodactyl/Docker)
 
 Gambar yang diunggah disimpan di `storage/uploads/` dan **tidak** dapat diakses langsung;
 dilayani lewat route `/media/{file}` dengan validasi nama file, sehingga aman meski
-web server tidak diberi konfigurasi tambahan.
+web server tidak diberi konfigurasi tambahan. File rilis disimpan di `storage/releases/`
+dan hanya bisa diunduh lewat route `/download/{id}` yang mengecek status publikasi.
 
 ---
 
@@ -281,6 +295,7 @@ web server tidak diberi konfigurasi tambahan.
 | Halaman putih / 500 | Set `APP_DEBUG=true` sementara, lihat `storage/logs/app.log`. |
 | "Database belum siap" | Pastikan `storage/` writable; untuk MySQL cek kredensial `DB_*`. |
 | Upload gagal | Cek `MAX_UPLOAD_MB`, `upload_max_filesize`, dan permission `storage/uploads`. |
+| Upload rilis gagal | Cek `RELEASE_MAX_MB` (maks 500), `upload_max_filesize`/`client_max_body_size`, dan permission `storage/releases`. |
 | Session tidak bertahan | Pastikan cookie tidak diblokir; jika HTTPS di balik proxy set `TRUST_PROXY=true`. |
 | Lupa kata sandi owner | `php bin/console password:reset email@anda.com SandiBaru123!` |
 | Ingin reset total | Hapus `storage/database.sqlite` + `storage/.schema_version`, restart. |

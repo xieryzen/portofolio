@@ -23,7 +23,7 @@
     },
     "scripts": {
         "installation": {
-            "script": "#!/bin/bash\n# Install script Portfolio CMS\napt update\napt install -y git unzip curl\n\ncd /mnt/server\n\nif [ -z \"$(ls -A /mnt/server)\" ]; then\n    echo \"Mengunduh aplikasi...\"\n    git clone https://github.com/xieryzen/portofolio.git . || true\nfi\n\nmkdir -p storage/uploads storage/sessions storage/logs\nchmod -R 775 storage\n\nif [ ! -f .env ]; then\n    cp .env.example .env\n    chmod 664 .env\nfi\n\necho \"Instalasi selesai.\"\n",
+            "script": "#!/bin/bash\n# Install script Portfolio CMS\napt update\napt install -y git unzip curl\n\ncd /mnt/server\n\nif [ -z \"$(ls -A /mnt/server)\" ]; then\n    echo \"Mengunduh aplikasi...\"\n    git clone https://github.com/xieryzen/portofolio.git . || true\nfi\n\nmkdir -p storage/uploads storage/releases storage/sessions storage/logs\nchmod -R 775 storage\n\nif [ ! -f .env ]; then\n    cp .env.example .env\n    chmod 664 .env\nfi\n\necho \"Instalasi selesai.\"\n",
             "container": "php:8.3-cli",
             "entrypoint": "bash"
         }
@@ -82,6 +82,15 @@
             "user_viewable": true,
             "user_editable": true,
             "rules": "required|integer|between:1,50"
+        },
+        {
+            "name": "Batas File Rilis (MB)",
+            "description": "Ukuran maksimal tiap file rilis/unduhan per project (maks 500).",
+            "env_variable": "RELEASE_MAX_MB",
+            "default_value": "50",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1,500"
         },
         {
             "name": "Zona Waktu",

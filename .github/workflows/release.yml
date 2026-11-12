@@ -1,0 +1,96 @@
+name: Rilis
+
+# Membuat GitHub Release otomatis setiap kali tag versi (v1.0.0, v1.1.0, ...) di-push.
+# Hasilnya: ZIP aplikasi siap ekstrak ke folder server Pterodactyl.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Paket & publikasi rilis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ambil source
+        uses: actions/checkout@v4
+
+      - name: Siapkan PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Cek sintaks PHP
+        run: |
+          set -euo pipefail
+          find app views public bin router.php -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l > /dev/null
+          echo "Semua file PHP lolos php -l"
+
+      - name: Buat ZIP aplikasi
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          NAME="portofolio-${VERSION}.zip"
+
+          zip -r -q "$NAME" . \
+            -x '.git/*' \
+            -x '.github/*' \
+            -x '.env' \
+            -x 'storage/logs/*' \
+            -x 'storage/sessions/*' \
+            -x 'storage/uploads/*' \
+            -x 'storage/releases/*' \
+            -x 'node_modules/*' \
+            -x '*.zip'
+
+          # Kembalikan folder kosong yang dibutuhkan aplikasi.
+          zip -q "$NAME" storage/logs/.gitkeep storage/sessions/.gitkeep \
+            storage/uploads/.gitkeep storage/releases/.gitkeep 2>/dev/null || true
+
+          ls -lh "$NAME"
+          echo "NAME=$NAME" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Tulis catatan rilis
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<EOF
+          ## Portofolio ${VERSION}
+
+          Paket aplikasi PHP 8.3 siap pasang di Pterodactyl.
+
+          ### Isi paket
+          - Seluruh source aplikasi (tanpa folder \`.git\`, data upload, dan sesi).
+          - Folder \`storage/\` sudah disiapkan, termasuk \`storage/releases/\` untuk file unduhan tiap project.
+
+          ### Cara pasang
+          1. Unduh \`${NAME}\` di bawah.
+          2. Ekstrak ke folder server Pterodactyl (mis. \`/home/container\`).
+          3. Pastikan folder \`storage/\` bisa ditulis (chmod 775).
+          4. Jalankan server, buka domain, lalu login sebagai owner.
+          5. Ganti password owner di menu **Admin → Pengaturan**.
+
+          Dokumentasi lengkap ada di \`README.md\` (termasuk batas upload dan peta URL).
+
+          > Catatan: fitur **Rilis & unduhan per project** dikelola dari dalam aplikasi
+          > (Admin → Edit project → Rilis & unduhan). Halaman GitHub Releases ini hanya
+          > menyediakan ZIP aplikasinya.
+          EOF
+          cat release-notes.md
+
+      - name: Publikasikan rilis
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" "$NAME" \
+            --title "Portofolio $VERSION" \
+            --notes-file release-notes.md \
+            --latest
