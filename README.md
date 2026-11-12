@@ -23,6 +23,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Responsif penuh, tema gelap, animasi halus: konten muncul berurutan saat scroll, ripple saat
   elemen diklik, tombol non-aktif bergetar, dan cincin kecil pada klik di area kosong.
   Semua animasi menghormati `prefers-reduced-motion`.
+- Tampilan dioptimalkan untuk HP kecil (≤420 px), HP standar, tablet, laptop, dan layar ≥1440 px:
+  target sentuh 44 px, input 16 px (anti-zoom iOS), tabel bisa digeser, serta gaya khusus cetak.
 
 **Akun**
 - Register user (bisa dimatikan), login, logout, ganti kata sandi, halaman dashboard user.
