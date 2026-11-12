@@ -101,6 +101,7 @@ $router->post('/admin/messages/{id}/delete', [App\Controllers\Admin\MessageContr
 $router->get('/admin/settings', [App\Controllers\Admin\SettingsController::class, 'edit']);
 $router->post('/admin/settings', [App\Controllers\Admin\SettingsController::class, 'update']);
 $router->post('/admin/settings/password', [App\Controllers\Admin\SettingsController::class, 'updatePassword']);
+$router->post('/admin/settings/test-notify', [App\Controllers\Admin\SettingsController::class, 'testNotify']);
 
 // ---- Cadangan (backup/restore) -----------------------------------------
 $router->get('/admin/backup', [App\Controllers\Admin\BackupController::class, 'index']);

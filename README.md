@@ -19,7 +19,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Galeri dokumentasi dengan lightbox (klik gambar untuk memperbesar).
 - **Rilis & unduhan per project**: riwayat versi, catatan perubahan (changelog), file unduhan, ukuran, jumlah unduhan, dan penanda versi terbaru.
 - Bagian "Tentang" berisi deskripsi panjang dan bar keahlian per kategori.
-- Formulir kontak yang tersimpan ke panel admin (dengan honeypot + anti-spam).
+- Formulir kontak yang tersimpan ke panel admin (dengan honeypot + anti-spam), plus notifikasi
+  opsional ke Telegram, webhook JSON, dan email SMTP.
 - **Tema terang & gelap**: tombol di header/admin, tersimpan di browser, dan otomatis mengikuti
   preferensi sistem (`prefers-color-scheme`) bila belum dipilih.
 - **Pencarian project** di beranda (judul, ringkasan, kategori, tech stack) lewat `/?q=kata`.
@@ -266,6 +267,44 @@ folder `storage/` agar database, upload, dan file rilis tetap aman.
 
 ---
 
+## 🔔 Notifikasi pesan kontak (opsional)
+
+Setiap pesan baru bisa langsung diteruskan ke kanal berikut. Isi salah satu (atau semuanya)
+di `.env`, lalu **restart** server.
+
+| Kanal | Variabel yang perlu diisi |
+| ----- | ------------------------- |
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` |
+| Webhook JSON | `NOTIFY_WEBHOOK_URL` |
+| Email | `NOTIFY_EMAIL_TO` + (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_ENCRYPTION`) |
+
+Contoh Telegram:
+1. Chat **@BotFather** → `/newbot` → salin token ke `TELEGRAM_BOT_TOKEN`.
+2. Kirim pesan apa pun ke bot, buka `https://api.telegram.org/bot<TOKEN>/getUpdates`, salin
+   `chat.id` ke `TELEGRAM_CHAT_ID`.
+3. Buka **Admin → Pengaturan → Notifikasi pesan**, klik **Kirim tes notifikasi**.
+
+Payload webhook:
+
+```json
+{
+  "event": "contact.created",
+  "site": "Nama Situs",
+  "message": { "name": "...", "email": "...", "subject": "...", "body": "..." },
+  "admin_url": "https://domain-kamu/admin/messages",
+  "sent_at": "2026-01-01T10:00:00+07:00"
+}
+```
+
+Catatan:
+- Toggle **Kirim notifikasi saat ada pesan kontak baru** ada di Pengaturan; mematikan toggle
+  tidak menghapus pesan dari panel.
+- Bila pengiriman gagal (token salah, SMTP diblokir hosting), pesan **tetap tersimpan** dan
+  kegagalan dicatat di `storage/logs/notify.log` serta tampil di halaman Pengaturan.
+- Tanpa `SMTP_HOST`, email dikirim lewat `mail()` bila tersedia.
+
+---
+
 ## ⚙️ Konfigurasi `.env`
 
 | Variabel | Default | Keterangan |
@@ -287,6 +326,9 @@ folder `storage/` agar database, upload, dan file rilis tetap aman.
 | `BACKUP_MAX_MB` | `200` | Batas ukuran ZIP cadangan saat restore (maks 1024). |
 | `ACCENT_COLOR` | `#6d8bff` | Warna aksen awal. |
 | `TRUST_PROXY` | `true` | Percayai header `X-Forwarded-Proto` (HTTPS). |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | — | Notifikasi pesan lewat bot Telegram. |
+| `NOTIFY_WEBHOOK_URL` | — | Webhook JSON saat ada pesan kontak baru. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_ENCRYPTION` | — | Kirim email notifikasi lewat SMTP. |
 
 > Variabel environment dari panel/Docker **selalu menang** atas isi `.env`.
 

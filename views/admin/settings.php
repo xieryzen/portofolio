@@ -1,5 +1,8 @@
 <?php
 /** @var array<string, mixed> $user */
+/** @var array{telegram: bool, webhook: bool, email: bool} $notifyChannels */
+/** @var bool $notifyEnabled */
+/** @var list<array{time: string, channel: string, ok: bool, detail: string}> $notifyLogs */
 
 $value = static fn (string $key, string $default = ''): string => (string) \old($key, setting($key, $default));
 ?>
@@ -55,6 +58,10 @@ $value = static fn (string $key, string $default = ''): string => (string) \old(
                     <input type="checkbox" name="allow_registration" value="1" <?= setting('allow_registration', '1') === '1' ? 'checked' : '' ?>>
                     Izinkan pengunjung mendaftar akun user
                 </label>
+                <label class="checkbox">
+                    <input type="checkbox" name="notify_contact" value="1" <?= $notifyEnabled ? 'checked' : '' ?>>
+                    Kirim notifikasi saat ada pesan kontak baru
+                </label>
                 <p class="small muted">
                     Catatan: nilai <code>ALLOW_REGISTRATION</code> di file <code>.env</code> juga harus bernilai <code>true</code> agar pendaftaran aktif.
                 </p>
@@ -92,6 +99,69 @@ $value = static fn (string $key, string $default = ''): string => (string) \old(
                     </div>
                     <button class="btn btn-soft btn-sm" type="submit"><?= svg_icon('lock', 'icon-sm') ?> Perbarui akun</button>
                 </form>
+            </div>
+        </div>
+
+        <div class="card" id="notifikasi">
+            <div class="card-head">
+                <h2>Notifikasi pesan</h2>
+                <span class="badge"><?= $notifyEnabled ? 'aktif' : 'nonaktif' ?></span>
+            </div>
+            <div class="card-body">
+                <p class="small muted" style="margin-bottom:12px">
+                    Kanal diatur lewat <code>.env</code> (butuh restart server setelah diubah).
+                </p>
+
+                <div class="info-list" style="margin-top:0">
+                    <div class="info-item">
+                        <span class="ii-icon"><?= svg_icon('message') ?></span>
+                        <div>
+                            <small>Telegram</small>
+                            <span><?= $notifyChannels['telegram'] ? 'Siap — TELEGRAM_BOT_TOKEN &amp; CHAT_ID terisi' : 'Belum diatur' ?></span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <span class="ii-icon"><?= svg_icon('external') ?></span>
+                        <div>
+                            <small>Webhook</small>
+                            <span><?= $notifyChannels['webhook'] ? 'Siap — NOTIFY_WEBHOOK_URL terisi' : 'Belum diatur' ?></span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <span class="ii-icon"><?= svg_icon('mail') ?></span>
+                        <div>
+                            <small>Email</small>
+                            <span><?= $notifyChannels['email'] ? 'Siap — ' . e((string) (\App\Config::env('NOTIFY_EMAIL_TO', '') ?: 'email owner')) : 'Belum diatur' ?></span>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" action="<?= e(app_url('/admin/settings/test-notify')) ?>" style="margin-top:14px">
+                    <?= csrf_field() ?>
+                    <button class="btn btn-soft btn-sm" type="submit"><?= svg_icon('sparkles', 'icon-sm') ?> Kirim tes notifikasi</button>
+                </form>
+
+                <?php if ($notifyLogs !== []): ?>
+                    <p class="side-label" style="margin:18px 0 8px">Percobaan terakhir</p>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <tbody>
+                            <?php foreach ($notifyLogs as $log): ?>
+                                <tr>
+                                    <td style="white-space:nowrap"><?= e($log['time']) ?></td>
+                                    <td><?= e($log['channel']) ?></td>
+                                    <td>
+                                        <span class="badge" style="background:<?= $log['ok'] ? 'color-mix(in srgb, var(--success) 18%, transparent)' : 'color-mix(in srgb, var(--danger) 16%, transparent)' ?>">
+                                            <?= $log['ok'] ? 'OK' : 'Gagal' ?>
+                                        </span>
+                                        <br><small class="muted"><?= e($log['detail']) ?></small>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
