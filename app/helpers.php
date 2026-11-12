@@ -361,6 +361,23 @@ if (!function_exists('time_ago')) {
     }
 }
 
+if (!function_exists('t')) {
+    /**
+     * Terjemahan teks antarmuka publik (ID/EN).
+     */
+    function t(string $key, ?string $fallback = null): string
+    {
+        return \App\Lang::get($key, $fallback);
+    }
+}
+
+if (!function_exists('locale_is')) {
+    function locale_is(string $locale): bool
+    {
+        return \App\Lang::is($locale);
+    }
+}
+
 if (!function_exists('setting')) {
     function setting(string $key, string $default = ''): string
     {
@@ -522,6 +539,8 @@ if (!function_exists('svg_icon')) {
             'clock' => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
             'briefcase' => '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/>',
             'calendar' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/>',
+            'chart' => '<path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/>',
+            'file' => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
             'package' => '<path d="m21 8-9-5-9 5v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
             'file-text' => '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
         ];

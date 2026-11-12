@@ -6,7 +6,9 @@ namespace App\Controllers\Admin;
 
 use App\Auth;
 use App\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Profile;
+use App\Settings;
 use App\Uploader;
 use App\Validator;
 
@@ -109,6 +111,57 @@ final class ProfileController extends Controller
         }
 
         \flash('success', $type === 'cover' ? 'Foto sampul berhasil diperbarui.' : 'Foto profil berhasil diperbarui.');
+        $this->redirect('/admin/profile');
+    }
+
+    public function uploadCv(): void
+    {
+        Auth::requireAdmin();
+
+        $file = $_FILES['cv'] ?? null;
+
+        if (!is_array($file)) {
+            \flash('error', 'Pilih berkas CV terlebih dahulu.');
+            $this->redirect('/admin/profile');
+        }
+
+        $result = Uploader::document($file);
+
+        if (!$result['ok']) {
+            \flash('error', $result['error'] ?? 'Gagal mengunggah CV.');
+            $this->redirect('/admin/profile');
+        }
+
+        $old = setting('cv_file', '');
+        Settings::set('cv_file', (string) ($result['file'] ?? ''));
+        Settings::set('cv_original_name', (string) ($result['original_name'] ?? 'cv.pdf'));
+        Settings::flush();
+
+        if ($old !== '') {
+            Uploader::deleteDocument($old);
+        }
+
+        ActivityLog::record('cv_updated', 'Mengunggah CV terbaru');
+        \flash('success', 'CV berhasil diunggah. Tombol Unduh CV sekarang tampil di halaman publik.');
+        $this->redirect('/admin/profile');
+    }
+
+    public function deleteCv(): void
+    {
+        Auth::requireAdmin();
+
+        $old = setting('cv_file', '');
+
+        if ($old !== '') {
+            Uploader::deleteDocument($old);
+        }
+
+        Settings::set('cv_file', '');
+        Settings::set('cv_original_name', '');
+        Settings::flush();
+
+        ActivityLog::record('cv_removed', 'Menghapus CV');
+        \flash('success', 'CV dihapus. Tombol Unduh CV disembunyikan dari halaman publik.');
         $this->redirect('/admin/profile');
     }
 

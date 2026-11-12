@@ -19,7 +19,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
 );
 ?>
 <!doctype html>
-<html lang="id" style="--accent: <?= e($accent) ?>" data-sw="<?= e(app_url('/sw.js')) ?>">
+<html lang="<?= e(\App\Lang::htmlLang()) ?>" style="--accent: <?= e($accent) ?>" data-sw="<?= e(app_url('/sw.js')) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -39,6 +39,9 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
     $ogImage = $ogSource ? absolute_url((string) media_url((string) $ogSource)) : null;
     ?>
     <link rel="canonical" href="<?= e($canonical) ?>">
+    <link rel="alternate" hreflang="id" href="<?= e(absolute_url(\App\Lang::switchUrl('id'))) ?>">
+    <link rel="alternate" hreflang="en" href="<?= e(absolute_url(\App\Lang::switchUrl('en'))) ?>">
+    <link rel="alternate" hreflang="x-default" href="<?= e(absolute_url(\App\Lang::switchUrl('id'))) ?>">
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?= e($fullTitle) ?>">
     <meta property="og:description" content="<?= e(excerpt($description, 180)) ?>">
@@ -52,7 +55,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">
 </head>
 <body>
-<a class="skip-link" href="#main">Langsung ke konten</a>
+<a class="skip-link" href="#main"><?= e(t('nav.skip')) ?></a>
 <?= View::partial('partials/navbar') ?>
 <?= View::partial('partials/flash') ?>
 

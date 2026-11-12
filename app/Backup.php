@@ -11,13 +11,13 @@ use ZipArchive;
 /**
  * Cadangan (backup) dan pemulihan (restore) data aplikasi.
  *
- * - Database SQLite + folder upload & rilis dibungkus jadi satu berkas ZIP.
+ * - Database SQLite + folder upload, rilis, dan dokumen (CV) dibungkus jadi satu berkas ZIP.
  * - Restore memvalidasi isi ZIP sebelum menyentuh berkas apa pun.
  */
 final class Backup
 {
     /** Folder yang ikut dicadangkan. */
-    private const FOLDERS = ['uploads', 'releases'];
+    private const FOLDERS = ['uploads', 'releases', 'documents'];
 
     /** Batas ukuran tiap berkas di dalam ZIP saat restore. */
     private const MAX_ENTRY_BYTES = 25 * 1024 * 1024;
@@ -143,8 +143,8 @@ final class Backup
             'Versi aplikasi: ' . (defined('APP_VERSION') ? APP_VERSION : '1.x'),
             '',
             self::isSqlite()
-                ? 'Isi: database.sqlite, uploads/, releases/'
-                : 'Isi: uploads/, releases/ (database MySQL tidak disertakan; gunakan mysqldump)',
+                ? 'Isi: database.sqlite, uploads/, releases/, documents/'
+                : 'Isi: uploads/, releases/, documents/ (database MySQL tidak disertakan; gunakan mysqldump)',
         ];
         $zip->addFromString('INFO.txt', implode("\n", $info) . "\n");
 

@@ -8,11 +8,14 @@ use App\Models\Profile;
 use App\Models\Project;
 use App\Models\Release;
 use App\Models\Skill;
+use App\Visits;
 
 final class HomeController extends Controller
 {
     public function index(): void
     {
+        Visits::record('/');
+
         $profile = Profile::get();
 
         $searchTerm = trim((string) ($_GET['q'] ?? ''));
@@ -54,6 +57,7 @@ final class HomeController extends Controller
         }
 
         Project::incrementViews((int) $project['id']);
+        Visits::record('/project/' . $project['slug']);
 
         $this->view('project', [
             'title' => (string) $project['title'],

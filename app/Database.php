@@ -16,7 +16,7 @@ final class Database
 {
     private static ?PDO $pdo = null;
 
-    private const SCHEMA_VERSION = '3';
+    private const SCHEMA_VERSION = '4';
 
     public static function connection(): PDO
     {
@@ -157,6 +157,10 @@ final class Database
             role VARCHAR(150) NOT NULL DEFAULT '',
             year VARCHAR(10) NOT NULL DEFAULT '',
             tech_stack VARCHAR(300) NOT NULL DEFAULT '',
+            case_challenge TEXT NULL,
+            case_solution TEXT NULL,
+            case_result TEXT NULL,
+            case_metrics TEXT NULL,
             project_url VARCHAR(255) NOT NULL DEFAULT '',
             repo_url VARCHAR(255) NOT NULL DEFAULT '',
             cover VARCHAR(190) NULL,
@@ -228,6 +232,14 @@ final class Database
             created_at VARCHAR(25) NOT NULL
         )$suffix";
 
+        $tables[] = "CREATE TABLE IF NOT EXISTS visits (
+            id $id,
+            path VARCHAR(190) NOT NULL,
+            referrer VARCHAR(190) NOT NULL DEFAULT '',
+            is_bot TINYINT(1) NOT NULL DEFAULT 0,
+            created_at VARCHAR(25) NOT NULL
+        )$suffix";
+
         $tables[] = "CREATE TABLE IF NOT EXISTS login_attempts (
             id $id,
             email VARCHAR(190) NOT NULL,
@@ -244,6 +256,12 @@ final class Database
         self::addColumnIfMissing($pdo, 'users', 'totp_enabled_at', 'VARCHAR(25) NULL');
         self::addColumnIfMissing($pdo, 'users', 'totp_recovery', 'TEXT NULL');
 
+        // Kolom studi kasus project (schema v3 → v4).
+        self::addColumnIfMissing($pdo, 'projects', 'case_challenge', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_solution', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_result', 'TEXT NULL');
+        self::addColumnIfMissing($pdo, 'projects', 'case_metrics', 'TEXT NULL');
+
         if ($mysql) {
             // Index dibuat terpisah karena MySQL tidak punya IF NOT EXISTS untuk index.
             self::createIndexIfMissing($pdo, 'project_images', 'idx_project_images_project', 'project_id');
@@ -252,6 +270,7 @@ final class Database
             self::createIndexIfMissing($pdo, 'messages', 'idx_messages_read', 'is_read');
             self::createIndexIfMissing($pdo, 'login_attempts', 'idx_login_attempts_email', 'email');
             self::createIndexIfMissing($pdo, 'activity_logs', 'idx_activity_logs_created', 'created_at');
+            self::createIndexIfMissing($pdo, 'visits', 'idx_visits_created', 'created_at');
         } else {
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_images_project ON project_images (project_id)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_project_releases_project ON project_releases (project_id)');
@@ -259,6 +278,7 @@ final class Database
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_messages_read ON messages (is_read)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_login_attempts_email ON login_attempts (email)');
             $pdo->exec('CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs (created_at)');
+            $pdo->exec('CREATE INDEX IF NOT EXISTS idx_visits_created ON visits (created_at)');
         }
 
         self::seed($pdo);

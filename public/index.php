@@ -41,6 +41,7 @@ $router->get('/media/{file}', [App\Controllers\MediaController::class, 'show']);
 $router->get('/download/{id}', [App\Controllers\DownloadController::class, 'file']);
 $router->post('/contact', [App\Controllers\ContactController::class, 'store']);
 $router->get('/manifest.webmanifest', [App\Controllers\PwaController::class, 'manifest']);
+$router->get('/cv', [App\Controllers\CvController::class, 'download']);
 $router->get('/offline', [App\Controllers\PwaController::class, 'offline']);
 $router->get('/sitemap.xml', [App\Controllers\SitemapController::class, 'index']);
 $router->get('/robots.txt', [App\Controllers\SitemapController::class, 'robots']);
@@ -65,6 +66,8 @@ $router->get('/admin', [App\Controllers\Admin\DashboardController::class, 'index
 $router->get('/admin/profile', [App\Controllers\Admin\ProfileController::class, 'edit']);
 $router->post('/admin/profile', [App\Controllers\Admin\ProfileController::class, 'update']);
 $router->post('/admin/profile/image', [App\Controllers\Admin\ProfileController::class, 'uploadImage']);
+$router->post('/admin/profile/cv', [App\Controllers\Admin\ProfileController::class, 'uploadCv']);
+$router->post('/admin/profile/cv/delete', [App\Controllers\Admin\ProfileController::class, 'deleteCv']);
 $router->post('/admin/profile/image/remove', [App\Controllers\Admin\ProfileController::class, 'removeImage']);
 
 $router->get('/admin/projects', [App\Controllers\Admin\ProjectController::class, 'index']);
@@ -115,6 +118,7 @@ $router->post('/admin/security/recovery', [App\Controllers\Admin\SecurityControl
 $router->get('/admin/activity', [App\Controllers\Admin\ActivityController::class, 'index']);
 
 // ---- Cadangan (backup/restore) -----------------------------------------
+$router->get('/admin/stats', [App\Controllers\Admin\StatsController::class, 'index']);
 $router->get('/admin/backup', [App\Controllers\Admin\BackupController::class, 'index']);
 $router->get('/admin/backup/database', [App\Controllers\Admin\BackupController::class, 'database']);
 $router->get('/admin/backup/archive', [App\Controllers\Admin\BackupController::class, 'archive']);

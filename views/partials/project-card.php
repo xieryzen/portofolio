@@ -5,7 +5,7 @@ $url = app_url('/project/' . $project['slug']);
 $tech = array_filter(array_map('trim', explode(',', (string) ($project['tech_stack'] ?? ''))));
 ?>
 <article class="project-card" data-reveal>
-    <a class="project-cover" href="<?= e($url) ?>" aria-label="Lihat project <?= e((string) $project['title']) ?>">
+    <a class="project-cover" href="<?= e($url) ?>" aria-label="<?= e(t('card.view')) ?> <?= e((string) $project['title']) ?>">
         <?php if ($cover): ?>
             <img src="<?= e($cover) ?>" alt="Cover <?= e((string) $project['title']) ?>" loading="lazy">
         <?php else: ?>
@@ -13,7 +13,7 @@ $tech = array_filter(array_map('trim', explode(',', (string) ($project['tech_sta
         <?php endif; ?>
         <span class="project-badge"><?= e((string) ($project['category'] ?: 'Project')) ?></span>
         <?php if ((int) ($project['is_featured'] ?? 0) === 1): ?>
-            <span class="project-featured-flag" title="Project unggulan"><?= svg_icon('star') ?></span>
+            <span class="project-featured-flag" title="<?= e(t('card.featured')) ?>"><?= svg_icon('star') ?></span>
         <?php endif; ?>
     </a>
 
@@ -27,7 +27,7 @@ $tech = array_filter(array_map('trim', explode(',', (string) ($project['tech_sta
                 <span class="dot-sep"></span>
             <?php endif; ?>
             <span><?= e($tech !== [] ? (string) reset($tech) : (string) ($project['category'] ?? '')) ?></span>
-            <a class="project-link" href="<?= e($url) ?>">Detail <?= svg_icon('arrow-up-right') ?></a>
+            <a class="project-link" href="<?= e($url) ?>"><?= e(t('card.detail')) ?> <?= svg_icon('arrow-up-right') ?></a>
         </div>
     </div>
 </article>

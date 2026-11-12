@@ -55,6 +55,10 @@ final class Config
             'release_max_mb'  => max(1, min(500, (int) self::env('RELEASE_MAX_MB', '50'))),
             'backup_max_mb'   => max(5, min(1024, (int) self::env('BACKUP_MAX_MB', '200'))),
             'accent'          => self::env('ACCENT_COLOR', '#6d8bff'),
+            'image_webp'      => self::envBool('IMAGE_WEBP', true),
+            'image_max_width' => max(320, min(6000, (int) self::env('IMAGE_MAX_WIDTH', '1600'))),
+            'image_webp_quality' => max(45, min(95, (int) self::env('IMAGE_WEBP_QUALITY', '82'))),
+            'cv_max_mb'       => max(1, min(50, (int) self::env('CV_MAX_MB', '10'))),
         ];
 
         self::$loaded = true;
