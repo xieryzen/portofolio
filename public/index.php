@@ -40,6 +40,8 @@ $router->get('/project/{slug}', [App\Controllers\HomeController::class, 'show'])
 $router->get('/media/{file}', [App\Controllers\MediaController::class, 'show']);
 $router->get('/download/{id}', [App\Controllers\DownloadController::class, 'file']);
 $router->post('/contact', [App\Controllers\ContactController::class, 'store']);
+$router->get('/sitemap.xml', [App\Controllers\SitemapController::class, 'index']);
+$router->get('/robots.txt', [App\Controllers\SitemapController::class, 'robots']);
 
 // ---- Autentikasi -------------------------------------------------------
 $router->get('/login', [App\Controllers\AuthController::class, 'showLogin']);

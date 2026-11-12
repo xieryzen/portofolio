@@ -20,7 +20,11 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - **Rilis & unduhan per project**: riwayat versi, catatan perubahan (changelog), file unduhan, ukuran, jumlah unduhan, dan penanda versi terbaru.
 - Bagian "Tentang" berisi deskripsi panjang dan bar keahlian per kategori.
 - Formulir kontak yang tersimpan ke panel admin (dengan honeypot + anti-spam).
-- Responsif penuh, tema gelap, animasi halus: konten muncul berurutan saat scroll, ripple saat
+- **Tema terang & gelap**: tombol di header/admin, tersimpan di browser, dan otomatis mengikuti
+  preferensi sistem (`prefers-color-scheme`) bila belum dipilih.
+- **Pencarian project** di beranda (judul, ringkasan, kategori, tech stack) lewat `/?q=kata`.
+- **SEO**: `sitemap.xml` dinamis (beranda + semua project terbit) dan `robots.txt` yang menunjuk sitemap.
+- Responsif penuh, animasi halus: konten muncul berurutan saat scroll, ripple saat
   elemen diklik, tombol non-aktif bergetar, dan cincin kecil pada klik di area kosong.
   Semua animasi menghormati `prefers-reduced-motion`.
 - Tampilan dioptimalkan untuk HP kecil (≤420 px), HP standar, tablet, laptop, dan layar ≥1440 px:
@@ -301,6 +305,8 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/` | publik | Portofolio lengkap + formulir kontak |
 | `/project/{slug}` | publik | Detail project + galeri dokumentasi |
 | `/media/{file}` | publik | Gambar upload (validasi nama & tipe) |
+| `/sitemap.xml` | publik | Sitemap dinamis untuk mesin pencari |
+| `/robots.txt` | publik | Aturan crawler + tautan sitemap |
 | `/download/{id}` | publik* | Unduh file rilis (*hanya rilis & project berstatus publik; admin selalu bisa) |
 | `/login`, `/register` | publik | Autentikasi |
 | `/dashboard` | user | Portofolio versi anggota |

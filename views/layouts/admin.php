@@ -44,6 +44,7 @@ $menu = [
     <meta name="theme-color" content="#060a14">
     <meta name="color-scheme" content="dark">
     <link rel="icon" href="<?= e($favicon) ?>">
+    <script src="<?= e(asset('assets/js/theme.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">
 </head>
 <body class="admin-body">
@@ -114,6 +115,10 @@ $menu = [
             </button>
             <span class="page-title"><?= e($pageTitle) ?></span>
             <div class="topbar-actions">
+                <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Ganti tema" title="Ganti tema">
+                    <span class="theme-icon theme-icon-moon"><?= svg_icon('moon') ?></span>
+                    <span class="theme-icon theme-icon-sun"><?= svg_icon('sun') ?></span>
+                </button>
                 <a class="btn btn-ghost btn-sm" href="<?= e(app_url('/')) ?>" target="_blank" rel="noopener">
                     <?= svg_icon('external', 'icon-sm') ?> Lihat situs
                 </a>

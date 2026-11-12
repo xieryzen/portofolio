@@ -1610,3 +1610,94 @@ h1, h2, h3, p, li, th, td, .release-notes, .detail-body, .toast { overflow-wrap:
     .admin-main { margin: 0; }
     a[href]::after { content: " (" attr(href) ")"; font-size: 11px; color: #555; }
 }
+
+/* ============================================================
+   Tema terang + tombol ganti tema
+   ============================================================ */
+[data-theme="light"] {
+    --bg: #f5f7fd;
+    --bg-2: #eef2fa;
+    --surface: #ffffff;
+    --surface-2: #f6f8fe;
+    --surface-3: #e9eefa;
+    --text: #0f172a;
+    --muted: #4a5670;
+    --muted-2: #6b7789;
+    --line: rgba(15, 23, 42, 0.10);
+    --line-strong: rgba(15, 23, 42, 0.20);
+    --shadow-sm: 0 2px 10px rgba(15, 23, 42, 0.06);
+    --shadow: 0 18px 40px -24px rgba(15, 23, 42, 0.28);
+    --shadow-lg: 0 32px 70px -32px rgba(15, 23, 42, 0.32);
+}
+
+[data-theme="light"] body::before {
+    background:
+        radial-gradient(900px 520px at 82% -8%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+        radial-gradient(760px 460px at 6% 4%, rgba(34, 211, 238, 0.14), transparent 68%),
+        linear-gradient(180deg, #f8faff 0%, #eef3fb 55%, #e9eff9 100%);
+}
+
+[data-theme="light"] body::after {
+    background-image:
+        linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px);
+}
+
+[data-theme="light"] ::selection { color: #0f172a; }
+
+[data-theme="light"] .site-header { background: color-mix(in srgb, #ffffff 76%, transparent); }
+[data-theme="light"] .site-header.is-scrolled { background: color-mix(in srgb, #ffffff 92%, transparent); }
+[data-theme="light"] .site-nav a:hover,
+[data-theme="light"] .site-nav a.is-active { background: rgba(15, 23, 42, 0.06); }
+
+[data-theme="light"] .btn-ghost { --btn-bg: rgba(15, 23, 42, 0.035); }
+[data-theme="light"] .btn-ghost:hover { --btn-bg: rgba(15, 23, 42, 0.075); }
+[data-theme="light"] .btn-primary { --btn-fg: #ffffff; }
+
+[data-theme="light"] .input,
+[data-theme="light"] .select,
+[data-theme="light"] .textarea { background: #ffffff; }
+
+[data-theme="light"] .admin-sidebar { background: linear-gradient(180deg, #ffffff, #f3f6fc); }
+[data-theme="light"] .admin-topbar { background: color-mix(in srgb, #ffffff 88%, transparent); }
+[data-theme="light"] .side-nav a:hover { background: rgba(15, 23, 42, 0.05); }
+
+[data-theme="light"] table.table thead th { background: #eef2fa; }
+[data-theme="light"] table.table tbody tr:hover { background: rgba(15, 23, 42, 0.035); }
+
+[data-theme="light"] .auth-aside {
+    background:
+        radial-gradient(720px 520px at 15% 10%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 65%),
+        linear-gradient(160deg, #eef3fc, #f7f9ff 70%);
+}
+
+[data-theme="light"] .lightbox { background: rgba(248, 250, 255, 0.94); }
+[data-theme="light"] .toast { background: color-mix(in srgb, #ffffff 94%, transparent); }
+[data-theme="light"] .orb { opacity: 0.6; }
+[data-theme="light"] .float-card { background: #ffffff; }
+
+/* Tombol ganti tema: hanya satu ikon yang tampil */
+.theme-toggle { position: relative; }
+.theme-toggle .theme-icon { display: none; }
+[data-theme="dark"] .theme-toggle .theme-icon-sun,
+[data-theme="light"] .theme-toggle .theme-icon-moon { display: block; }
+:root:not([data-theme]) .theme-toggle .theme-icon-moon { display: block; }
+.theme-toggle .theme-icon .icon { width: 18px; height: 18px; }
+
+/* Formulir pencarian project */
+.project-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: -8px 0 28px;
+}
+.project-search .input-group { flex: 1 1 260px; min-width: 0; }
+.project-search .input { height: 44px; }
+.project-search .btn { height: 44px; }
+.project-search .btn-ghost { border-style: dashed; }
+
+@media (max-width: 420px) {
+    .project-search { margin-bottom: 22px; }
+    .project-search .btn { flex: 1 1 auto; }
+}
