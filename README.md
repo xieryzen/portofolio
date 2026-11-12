@@ -24,6 +24,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
   preferensi sistem (`prefers-color-scheme`) bila belum dipilih.
 - **Pencarian project** di beranda (judul, ringkasan, kategori, tech stack) lewat `/?q=kata`.
 - **SEO**: `sitemap.xml` dinamis (beranda + semua project terbit) dan `robots.txt` yang menunjuk sitemap.
+- **PWA**: bisa dipasang ke home screen (Android/iOS), aset di-cache service worker, dan ada
+  halaman `/offline` saat koneksi putus. Area admin & unduhan tidak pernah di-cache.
 - Responsif penuh, animasi halus: konten muncul berurutan saat scroll, ripple saat
   elemen diklik, tombol non-aktif bergetar, dan cincin kecil pada klik di area kosong.
   Semua animasi menghormati `prefers-reduced-motion`.
@@ -308,6 +310,9 @@ role `admin` diberikan owner dari **Admin → Pengguna**.
 | `/` | publik | Portofolio lengkap + formulir kontak |
 | `/project/{slug}` | publik | Detail project + galeri dokumentasi |
 | `/media/{file}` | publik | Gambar upload (validasi nama & tipe) |
+| `/manifest.webmanifest` | publik | Manifest PWA (nama, ikon, warna tema) |
+| `/sw.js` | publik | Service worker (cache app shell) |
+| `/offline` | publik | Halaman cadangan saat offline |
 | `/sitemap.xml` | publik | Sitemap dinamis untuk mesin pencari |
 | `/robots.txt` | publik | Aturan crawler + tautan sitemap |
 | `/download/{id}` | publik* | Unduh file rilis (*hanya rilis & project berstatus publik; admin selalu bisa) |

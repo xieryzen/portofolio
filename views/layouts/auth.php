@@ -17,7 +17,7 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
 );
 ?>
 <!doctype html>
-<html lang="id" style="--accent: <?= e($accent) ?>">
+<html lang="id" style="--accent: <?= e($accent) ?>" data-sw="<?= e(app_url('/sw.js')) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,6 +26,9 @@ $favicon = 'data:image/svg+xml,' . rawurlencode(
     <meta name="theme-color" content="#060a14">
     <meta name="color-scheme" content="dark">
     <link rel="icon" href="<?= e($favicon) ?>">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('icons/favicon-32.png')) ?>">
+    <link rel="apple-touch-icon" href="<?= e(asset('icons/apple-touch-icon.png')) ?>">
+    <link rel="manifest" href="<?= e(asset('manifest.webmanifest')) ?>">
     <script src="<?= e(asset('assets/js/theme.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">
 </head>
