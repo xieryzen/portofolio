@@ -21,4 +21,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD php -r "exit(@fsockopen('127.0.0.1', (int)(getenv('APP_PORT') ?: 8080)) ? 0 : 1);"
 
-CMD ["bash", "start.sh"]
+CMD ["sh", "start.sh"]

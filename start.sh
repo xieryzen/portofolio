@@ -1,9 +1,10 @@
-#!/usr/bin/env bash
+#!/bin/sh
 #
 # Entry point untuk Pterodactyl / Docker / VPS.
+# Kompatibel dengan POSIX sh (Alpine/ash) maupun bash.
 # Pterodactyl menyediakan SERVER_PORT & SERVER_IP secara otomatis.
 #
-set -euo pipefail
+set -eu
 
 cd "$(dirname "$0")"
 

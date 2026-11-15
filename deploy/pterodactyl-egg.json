@@ -7,14 +7,14 @@
     "exported_at": "2026-11-12T00:00:00+07:00",
     "name": "PHP 8.3 - Portfolio CMS",
     "author": "xieryzen@users.noreply.github.com",
-    "description": "Portfolio CMS berbasis PHP 8.3 dengan panel admin. Menggunakan PHP built-in server dan SQLite (tanpa Nginx/MySQL). Start command: bash start.sh.",
+    "description": "Portfolio CMS berbasis PHP 8.3 dengan panel admin. Menggunakan PHP built-in server dan SQLite (tanpa Nginx/MySQL). Start command: sh start.sh.",
     "features": null,
     "docker_images": {
         "PHP 8.3 CLI": "php:8.3-cli",
         "PHP 8.3 CLI (Debian slim)": "php:8.3-cli-bookworm"
     },
     "file_denylist": [],
-    "startup": "bash start.sh",
+    "startup": "sh start.sh",
     "config": {
         "files": {},
         "startup": "{\r\n    \"done\": \"Menjalankan PHP\"\r\n}",
