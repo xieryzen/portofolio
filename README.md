@@ -274,6 +274,32 @@ Backup panel sengaja **tidak** dihapus otomatis (itu data milikmu): skrip menamp
 folder dan umur backup, lalu kamu memutuskan sendiri lewat **panel → Backups**. Simpan 2–3
 backup terakhir saja agar disk tidak penuh.
 
+### Menjalankan dari GitHub Actions (tanpa SSH dari komputer sendiri)
+
+Kalau mesin yang dipakai tidak bisa menjangkau IP VPS, pakai workflow **VPS**
+(`.github/workflows/vps.yml`) di tab **Actions** → **VPS** → *Run workflow*:
+
+| Tugas | Isi | Butuh |
+| --- | --- | --- |
+| `cek` | DNS, port 22/80/443, banner SSH, HTTP panel & situs | — |
+| `bersih-laporan` | Menjalankan `cleanup-vps.sh` mode laporan | SSH |
+| `bersih-hapus` | Menjalankan `cleanup-vps.sh --apply` (wajib isi konfirmasi `BERSIHKAN`) | SSH |
+| `deploy-panel` | Deploy rilis lewat Client API (`panel-deploy.sh`) | API key panel |
+
+Tambahkan secrets sekali di **Settings → Secrets and variables → Actions**:
+
+| Secret | Wajib | Isi |
+| --- | --- | --- |
+| `VPS_HOST` | tidak | Default `38.47.92.214` |
+| `VPS_USER` | tidak | Default `root` |
+| `VPS_SSH_KEY` | untuk tugas SSH | Kunci privat SSH (disarankan) |
+| `VPS_SSH_PASSWORD` | alternatif | Kata sandi SSH bila memakai password |
+| `PTERO_SERVER_ID` | untuk deploy | UUID server panel |
+| `PTERO_API_KEY` | untuk deploy | API key Client API (read & write) |
+
+Kredensial hanya dibaca dari secrets saat job berjalan (di-mask di log), tidak pernah ditulis
+ke repo. Workflow memakai `workflow_dispatch`, jadi hanya bisa dipicu manual oleh pemilik/collaborator.
+
 ---
 
 ## 🖥️ Deploy VPS (Nginx + PHP-FPM / Apache)

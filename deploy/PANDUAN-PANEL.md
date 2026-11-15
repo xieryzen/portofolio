@@ -268,7 +268,21 @@ upload, ekstrak, dan restart. Langkah manualnya:
 
 ---
 
-## 6. Keamanan
+## 6. Kontrol dari GitHub Actions (bila SSH lokal tidak bisa)
+
+Workflow **VPS** (`.github/workflows/vps.yml`) menjalankan tugas di server dari infrastruktur
+GitHub, yang punya akses internet penuh:
+
+1. **Settings → Secrets and variables → Actions**, tambahkan `VPS_SSH_KEY` (kunci privat,
+   disarankan) **atau** `VPS_SSH_PASSWORD`; opsional `VPS_HOST`, `VPS_USER`.
+   Untuk deploy tanpa SSH: `PTERO_SERVER_ID` + `PTERO_API_KEY`.
+2. Tab **Actions** → **VPS** → *Run workflow*, pilih tugas:
+   `cek`, `bersih-laporan`, `bersih-hapus` (konfirmasi `BERSIHKAN`), atau `deploy-panel`.
+3. Log job menampilkan hasil; kredensial otomatis di-mask.
+
+---
+
+## 7. Keamanan
 
 - Password VPS/panel/owner yang pernah dikirim lewat chat **anggap bocor**: ganti password SSH
   (`passwd`), ganti password akun panel, dan ganti kata sandi owner di aplikasi.
@@ -280,7 +294,7 @@ upload, ekstrak, dan restart. Langkah manualnya:
 
 ---
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Gejala | Penyebab umum | Solusi |
 | --- | --- | --- |
