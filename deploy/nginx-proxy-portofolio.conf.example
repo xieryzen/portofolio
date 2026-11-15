@@ -1,0 +1,65 @@
+# Contoh Nginx REVERSE PROXY untuk aplikasi yang berjalan di dalam container
+# Pterodactyl (PHP built-in server + SQLite). Nginx di VPS hanya meneruskan
+# permintaan dari domain ke port alokasi server.
+#
+# Pasang di: /etc/nginx/sites-available/portofolio.xiero.biz.id
+# Aktifkan : sudo ln -s /etc/nginx/sites-available/portofolio.xiero.biz.id \
+#                        /etc/nginx/sites-enabled/
+# Uji      : sudo nginx -t && sudo systemctl reload nginx
+# HTTPS    : sudo certbot --nginx -d portofolio.xiero.biz.id --redirect
+#
+# Ganti PORT_ALOKASI dengan port Primary Allocation di panel (mis. 8080).
+# Bila Wings berjalan di VPS yang sama, 127.0.0.1 cukup. Bila berbeda,
+# pakai IP node: 38.47.92.214:PORT_ALOKASI.
+
+upstream portofolio_xiero {
+    server 127.0.0.1:PORT_ALOKASI;
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name portofolio.xiero.biz.id;
+
+    charset utf-8;
+
+    # Samakan dengan RELEASE_MAX_MB + buffer (default rilis 50 MB).
+    client_max_body_size 60M;
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        proxy_pass http://portofolio_xiero;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        # Butuh untuk SSE/WebSocket bila nanti dipakai.
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout    120s;
+        proxy_read_timeout    120s;
+        proxy_buffering       off;
+    }
+
+    # Aset statis & unduhan: jangan buffer agar hemat RAM container.
+    location ~* \.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|zip|pdf)$ {
+        proxy_pass http://portofolio_xiero;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_buffering off;
+        expires 7d;
+        add_header Cache-Control "public";
+    }
+
+    access_log /var/log/nginx/portofolio.xiero.biz.id.access.log;
+    error_log  /var/log/nginx/portofolio.xiero.biz.id.error.log warn;
+}
