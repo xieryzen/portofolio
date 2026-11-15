@@ -151,6 +151,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY) di Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
       - name: Kumpulkan informasi
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -204,6 +214,16 @@ jobs:
       SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY) di Settings → Secrets and variables → Actions"
+            exit 1
+          fi
 
       - name: Validasi konfirmasi
         if: inputs.konfirmasi != 'DEPLOY'
@@ -292,6 +312,16 @@ jobs:
       VPS_USER: ${{ secrets.VPS_USER || 'root' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY) di Settings → Secrets and variables → Actions"
+            exit 1
+          fi
 
       - name: Validasi konfirmasi
         if: inputs.tugas == 'bersih-hapus' && inputs.konfirmasi != 'BERSIHKAN'
