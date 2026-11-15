@@ -347,23 +347,30 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
     position: absolute;
     inset: 0;
     background-image: var(--hero-banner);
-    background-position: center;
+    background-position: center right;
     background-size: cover;
     background-repeat: no-repeat;
-    opacity: .52;
+    opacity: .75;
     z-index: 0;
-    -webkit-mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
-    mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
 }
 .hero.has-banner::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, rgba(4, 8, 18, .82) 0%, rgba(4, 8, 18, .45) 48%, rgba(4, 8, 18, .9) 100%),
-                linear-gradient(180deg, rgba(4, 8, 18, .2) 0%, rgba(4, 8, 18, .95) 94%);
+    background:
+        linear-gradient(100deg, rgba(4, 8, 18, .62) 0%, rgba(4, 8, 18, .22) 46%, rgba(4, 8, 18, .8) 100%),
+        linear-gradient(180deg, rgba(4, 8, 18, .03) 0%, rgba(4, 8, 18, .88) 96%);
     z-index: 0;
 }
 .hero.has-banner > .container { position: relative; z-index: 1; }
+
+@media (max-width: 900px) {
+    .hero.has-banner::before { background-position: 68% 50%; opacity: .55; }
+    .hero.has-banner::after {
+        background:
+            linear-gradient(180deg, rgba(4, 8, 18, .72) 0%, rgba(4, 8, 18, .95) 92%);
+    }
+}
 .hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
