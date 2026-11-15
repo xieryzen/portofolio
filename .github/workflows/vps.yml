@@ -41,6 +41,7 @@ on:
           - kredensial
           - akun
           - akun-ubah
+          - diagnosa
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1302,6 +1303,57 @@ jobs:
             esac
           done <<< "$out" || true
           if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # ------------------------------------------------------------ diagnosa ----
+  diagnosa:
+    name: Diagnosa upload & storage
+    if: inputs.tugas == 'diagnosa'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Kumpulkan info container
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR="/var/lib/pterodactyl/volumes/2ed93f7b-4009-4eaa-814c-577dee40dd3b"
+          CID="$(docker ps -q --filter name=2ed93f7b 2>/dev/null | head -n 1)"
+          [ -n "$CID" ] || { echo "=GAGAL container tidak jalan"; exit 1; }
+          echo "=INI $(docker exec "$CID" php -r 'echo "upload=".ini_get("upload_max_filesize")." post=".ini_get("post_max_size")." maxfiles=".ini_get("max_file_uploads")." file_uploads=".ini_get("file_uploads")." mem=".ini_get("memory_limit");' 2>&1 | head -1)"
+          echo "=EXT $(docker exec "$CID" php -r 'echo "gd=".(function_exists("imagecreatefromstring")?"ya":"tidak")." webp=".(function_exists("imagewebp")?"ya":"tidak")." finfo=".(class_exists("finfo")?"ya":"tidak")." sqlite=".(in_array("sqlite", PDO::getAvailableDrivers())?"ya":"tidak");' 2>&1 | head -1)"
+          echo "=IZIN $(docker exec "$CID" sh -c 'for d in storage storage/uploads storage/documents storage/releases; do printf "%s=%s " "$d" "$([ -w "$d" ] && echo rw || echo RO)"; done; echo; id -u  2>/dev/null' 2>&1 | head -1)"
+          echo "=ENVLIMIT $(grep -E "^(MAX_UPLOAD_MB|CV_MAX_MB|RELEASE_MAX_MB|BACKUP_MAX_MB|APP_MAX_MB)=" "$DIR/.env" | tr "\n" " ")"
+          echo "=JUMLAH $(docker exec "$CID" sh -c 'printf "uploads=%s dokumen=%s rilis=%s\n" "$(ls -1 storage/uploads 2>/dev/null | wc -l)" "$(ls -1 storage/documents 2>/dev/null | wc -l)" "$(ls -1 storage/releases 2>/dev/null | wc -l)"' 2>&1 | head -1)"
+          echo "=OWNER $(stat -c "%u:%g" "$DIR/storage/uploads" 2>/dev/null) app=$(docker exec "$CID" sh -c "id -u; id -g" 2>/dev/null | tr "\n" ":")"
+          echo "=LOG $(docker exec "$CID" sh -c 'ls -1t storage/logs/*.log 0 2>/dev/null | head -1' 2>&1 | head -1)"
+          echo "=TAIL $(docker logs --tail 400 "$CID" 2>&1 | grep -iE "upload|fatal|uncaught|error" | tail -4 | tr "\n" " | " | cut -c1-600)"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =INI*|=EXT*|=IZIN*|=ENVLIMIT*|=JUMLAH*|=OWNER*|=LOG*|=TAIL*) echo "::notice title=Diagnosa::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
           exit 0
 
   # --------------------------------------------------------------- orphan ----
