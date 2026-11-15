@@ -1264,8 +1264,12 @@ jobs:
           }
           printf("=UBAH berhasil|baris=%d|email=%s|pola=%s****%s|panjang=%d\n", $rows, $em, substr($pw, 0, 4), substr($pw, -1), strlen($pw));
           PHP
-          CODE="$(sed '1s/^<?php[[:space:]]*$//' /tmp/akun-ubah.php)"
-          out2="$(docker exec -i "$CID" php -r "$CODE" "$MODE" 2>&1)"; echo "=EXEC rc=$?"
+          # rootfs container read-only -> skrip ditaruh sementara di volume (ekstensi .txt,
+          # jadi tidak pernah dieksekusi oleh web server), lalu dihapus.
+          cp /tmp/akun-ubah.php "$DIR/.akun-ubah.txt"
+          out2="$(docker exec "$CID" php /home/container/.akun-ubah.txt "$MODE" 2>&1)"; rc2=$?
+          rm -f "$DIR/.akun-ubah.txt"
+          echo "=EXEC rc=$rc2 skrip-hapus=$( [ -f "$DIR/.akun-ubah.txt" ] && echo belum || echo ya )"
           echo "$out2" | head -12 | sed 's/^/=OUT /'
           EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
           PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
