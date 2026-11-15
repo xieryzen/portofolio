@@ -171,6 +171,15 @@ di dalam container. Semua permintaan diarahkan lewat `router.php`.
 > **[`deploy/PANDUAN-PANEL.md`](deploy/PANDUAN-PANEL.md)** — lengkap dengan
 > [`deploy/nginx-proxy-portofolio.conf.example`](deploy/nginx-proxy-portofolio.conf.example)
 > untuk reverse proxy domain ke port alokasi.
+>
+> Untuk update tanpa SSH: `deploy/panel-deploy.sh` memakai **Client API panel**
+> (backup → unduh ZIP rilis → upload → ekstrak → restart). Contoh:
+> ```bash
+> export PTERO_PANEL_URL="https://panel.hexnitystore.com"   # ganti dengan URL panel-mu
+> export PTERO_SERVER_ID="<uuid server>"
+> export PTERO_API_KEY="<api key>"
+> bash deploy/panel-deploy.sh --dry-run
+> ```
 
 ### 1. Import egg
 1. Buka **Admin Area → Nests → Import Egg**.

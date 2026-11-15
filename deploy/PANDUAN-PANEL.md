@@ -89,6 +89,30 @@ ls -a   # app/ public/ start.sh storage/ harus ada di sini
 Isi ZIP berada di root (tanpa folder pembungkus), jadi ekstrak langsung ke `/home/container`.
 Bila `unzip`/`curl` tidak tersedia, pakai Metode A lewat File Manager.
 
+**Metode C — API panel (tanpa SSH, tanpa upload manual).**
+
+Skrip `deploy/panel-deploy.sh` melakukan semuanya dari komputermu: bikin **backup**,
+unduh ZIP rilis terbaru, upload, ekstrak, lalu **restart** server.
+
+1. Panel → klik foto profil → **API Credentials** → *Create API Key* (permission *read & write*).
+   Simpan key di password manager, **jangan** di-commit.
+2. Jalankan:
+
+```bash
+export PTERO_PANEL_URL="https://panel.hexnitystore.com"
+export PTERO_SERVER_ID="<uuid server Xiero Portofolio>"
+export PTERO_API_KEY="<api key>"
+
+bash deploy/panel-deploy.sh --dry-run     # cek rencana dulu
+bash deploy/panel-deploy.sh               # backup + upload + restart
+```
+
+Opsi lain: `--tag v1.8.2`, `--no-backup`, `--domain portofolio.xiero.biz.id`.
+Skrip butuh `curl`, `python3`, dan `unzip` di komputermu.
+
+> ZIP rilis tidak memuat `storage/` maupun `.env`, jadi database, gambar, file rilis, dan
+> konfigurasi tidak tertimpa. Tetap buat backup (skrip melakukannya otomatis) sebelum update.
+
 ### 2b. Isi variabel (sekali saja)
 
 Panel → **Startup** → isi variabel egg:
@@ -210,6 +234,9 @@ curl -sI https://portofolio.xiero.biz.id/admin | head -3    # harus 302 ke /logi
 ---
 
 ## 4. Update ke rilis baru (tanpa kehilangan data)
+
+Cara tercepat: `bash deploy/panel-deploy.sh` (Metode C) — sudah termasuk backup otomatis,
+upload, ekstrak, dan restart. Langkah manualnya:
 
 1. **Backup dulu**: panel → **Backups** → *Create backup*, atau unduh
    `storage/database.sqlite` + folder `storage/uploads/` lewat File Manager.
