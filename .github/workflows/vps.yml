@@ -34,6 +34,7 @@ on:
           - web-setup
           - fix-startup
           - start-server
+          - smoke
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -700,6 +701,52 @@ jobs:
             esac
           done <<< "$out" || true
           exit 0
+
+  # ---------------------------------------------------------------- smoke ----
+  smoke:
+    name: Uji halaman publik & admin
+    if: inputs.tugas == 'smoke'
+    runs-on: ubuntu-latest
+    env:
+      BASE: https://portofolio.xiero.biz.id
+    steps:
+      - name: Beranda (200)
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE/" 2>/dev/null || true)"
+          echo "::notice title=Beranda::HTTP ${code:-000}"
+          [ "${code:-000}" = "200" ]
+
+      - name: /login (200)
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE/login" 2>/dev/null || true)"
+          echo "::notice title=Login::HTTP ${code:-000}"
+          [ "${code:-000}" = "200" ]
+
+      - name: /admin tanpa sesi (302 ke login)
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE/admin" 2>/dev/null || true)"
+          echo "::notice title=Admin::HTTP ${code:-000}"
+          [ "${code:-000}" = "302" ]
+
+      - name: /blog (200)
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE/blog" 2>/dev/null || true)"
+          echo "::notice title=Blog::HTTP ${code:-000}"
+          [ "${code:-000}" = "200" ]
+
+      - name: /sitemap.xml & /feed.xml (200)
+        run: |
+          for path in /sitemap.xml /feed.xml /robots.txt; do
+            code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE$path" 2>/dev/null || true)"
+            echo "::notice title=$path::HTTP ${code:-000}"
+            [ "${code:-000}" = "200" ] || exit 1
+          done
+
+      - name: HTTP diarahkan ke HTTPS
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' http://portofolio.xiero.biz.id/ 2>/dev/null || true)"
+          echo "::notice title=Redirect::HTTP ${code:-000}"
+          case "${code:-000}" in 301|302|308) exit 0 ;; *) exit 1 ;; esac
 
   # -------------------------------------------------------------- bersih ----
   bersih:
