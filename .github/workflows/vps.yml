@@ -900,6 +900,14 @@ jobs:
               $n = count($items);
               $saved += min($keep, $n);
               $cut = 0; $mb = 0;
+              if ($server === 'di-luar-panel') {
+                  // Berkas yang tidak tercatat di panel tidak dihapus otomatis.
+                  $luar = 0; $luarMb = 0;
+                  foreach ($items as $it) { $luar++; $luarMb += $it['s']; }
+                  printf("=LUAR %d berkas tidak tercatat di panel|%d MB (tidak dihapus)\n", $luar, (int) round($luarMb / 1048576));
+                  $saved += $luar;
+                  continue;
+              }
               foreach ($items as $i => $it) {
                   if ($i < $keep) { continue; }
                   $cut++; $mb += $it['s'];
@@ -923,7 +931,7 @@ jobs:
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =SERVER*|=TOTAL*|=TERSISA*) echo "::notice title=Backup::${line#=}";;
+              =SERVER*|=TOTAL*|=TERSISA*|=LUAR*) echo "::notice title=Backup::${line#=}";;
               =AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
