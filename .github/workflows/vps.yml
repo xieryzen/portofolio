@@ -30,6 +30,7 @@ on:
           - info
           - deploy-ssh
           - panel-start
+          - logs
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -311,6 +312,57 @@ jobs:
             2*|3*) echo "::notice title=Situs::HTTP $code" ;;
             *) echo "::warning title=Situs::HTTP ${code:-000} — domain/SSL belum siap, cek nginx+certbot" ;;
           esac
+
+  # ----------------------------------------------------------------- logs ----
+  logs:
+    name: Log container server
+    if: inputs.tugas == 'logs'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Ambil status & log
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          UUID="$1"
+          NAME="$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -F "$UUID" | head -1)"
+          if [ -z "$NAME" ]; then echo "=GAGAL container tidak ditemukan"; exit 1; fi
+          echo "=CONTAINER $NAME"
+          echo "=STATE $(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$NAME" 2>/dev/null)"
+          echo "=IMAGE $(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null)"
+          echo "=PORTENV $(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$NAME" 2>/dev/null | grep -E 'SERVER_PORT|SERVER_IP' | tr '\n' ' ')"
+          echo "=VOLENV $(ls -A "/var/lib/pterodactyl/volumes/$UUID" 2>/dev/null | tr '\n' ' ')"
+          echo "=PHPIMG $(docker run --rm --entrypoint php "$(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null)" -m 2>/dev/null || echo tidak-bisa)"
+          docker logs --tail 25 "$NAME" 2>&1 | sed 's/^/=LOG /'
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 14 ] && echo "::notice title=Log::${line#=}" ;;
+            esac
+          done <<< "$out" || true
+          exit 0
 
   # ---------------------------------------------------------- panel-start ----
   panel-start:
