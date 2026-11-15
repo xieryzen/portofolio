@@ -752,6 +752,32 @@ jobs:
             [ "${code:-000}" = "200" ] || exit 1
           done
 
+      - name: Aset identitas (logo, favicon, banner) tersaji
+        run: |
+          for path in /icons/logo-xiero-512.png /icons/favicon-32.png /icons/icon-192.png /icons/icon-512.png /icons/apple-touch-icon.png /assets/img/hero-banner.jpg /assets/img/hero-banner.webp /assets/img/og-cover.jpg; do
+            code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' "$BASE$path" 2>/dev/null || true)"
+            echo "::notice title=$path::HTTP ${code:-000}"
+            [ "${code:-000}" = "200" ] || exit 1
+          done
+
+      - name: Beranda memakai aset identitas & meta OG
+        run: |
+          body="$(curl -sS -m 25 "$BASE/" 2>/dev/null || true)"
+          for needle in icons/logo-xiero-512.png icons/favicon-32.png assets/img/hero-banner.jpg og:image; do
+            if printf '%s' "$body" | grep -q -- "$needle"; then
+              echo "::notice title=HTML::memuat $needle"
+            else
+              echo "::error title=HTML::tidak memuat $needle"
+              exit 1
+            fi
+          done
+
+      - name: Aset identitas lama tetap kompatibel (manifest PWA)
+        run: |
+          body="$(curl -sS -m 25 "$BASE/manifest.webmanifest" 2>/dev/null || true)"
+          printf '%s' "$body" | grep -q 'icon-maskable-512.png'
+          echo "::notice title=Manifest::ikon maskable terdaftar"
+
       - name: HTTP diarahkan ke HTTPS
         run: |
           code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' http://portofolio.xiero.biz.id/ 2>/dev/null || true)"
