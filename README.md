@@ -284,6 +284,7 @@ Kalau mesin yang dipakai tidak bisa menjangkau IP VPS, pakai workflow **VPS**
 | `cek` | DNS, port 22/80/443, banner SSH, HTTP panel & situs | — |
 | `info` | Info server: OS, disk, Docker/Wings, folder volume, container, nginx, sertifikat (baca saja) | SSH |
 | `deploy-ssh` | Unduh ZIP rilis → ekstrak ke volume server panel → chown → restart container (wajib konfirmasi `DEPLOY`) | SSH |
+| `panel-start` | Menyalakan server lewat `php artisan p:server:bulk-power start <uuid>` lalu menampilkan container + port alokasi | SSH |
 | `bersih-laporan` | Menjalankan `cleanup-vps.sh` mode laporan | SSH |
 | `bersih-hapus` | Menjalankan `cleanup-vps.sh --apply` (wajib isi konfirmasi `BERSIHKAN`) | SSH |
 | `deploy-panel` | Deploy rilis lewat Client API (`panel-deploy.sh`) | API key panel |
