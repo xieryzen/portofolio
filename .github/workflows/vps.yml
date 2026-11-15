@@ -36,6 +36,8 @@ on:
           - start-server
           - smoke
           - bkp
+          - bkp-hapus
+          - orphan
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -822,6 +824,153 @@ jobs:
                 ;;
             esac
           done <<< "$out" || true
+          exit 0
+
+  # ------------------------------------------------------------ bkp-hapus ----
+  bkp-hapus:
+    name: Hapus backup lama (sisakan 2 terbaru)
+    if: inputs.tugas == 'bkp-hapus'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      MODE: ${{ startsWith(inputs.konfirmasi, 'HAPUS') && 'hapus' || 'laporan' }}
+      SIMPAN: '2'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Bersihkan berkas backup lama
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $MODE $SIMPAN" <<'REMOTE' 2>&1
+          set -u
+          MODE="$1"; KEEP="${2:-2}"
+          DIR=/var/lib/pterodactyl/backups
+          if [ ! -d "$DIR" ]; then echo "=GAGAL folder backup tidak ada"; exit 1; fi
+          echo "=MODE $MODE (menyimpan $KEEP berkas terbaru, folder tidak disentuh)"
+          echo "=AWAL $(du -sh "$DIR" 2>/dev/null | cut -f1)"
+          # Berkas (bukan folder) diurutkan dari yang terbaru; mulai nomor KEEP+1 dihapus.
+          find "$DIR" -maxdepth 1 -type f -printf '%T@|%s|%p\n' 2>/dev/null | sort -t'|' -k1 -rn \
+            | tail -n +$((KEEP + 1)) | while IFS='|' read -r ts size path; do
+                mb=$(( size / 1048576 ))
+                if [ "$MODE" = "hapus" ]; then
+                  case "$path" in "$DIR"/*) ;; *) echo "=LEWAT $(basename "$path")"; continue ;; esac
+                  if rm -f -- "$path"; then echo "=HAPUS ${mb}MB|$(basename "$path")"; else echo "=GAGAL $path"; fi
+                else
+                  echo "=AKAN ${mb}MB|$(basename "$path")"
+                fi
+              done
+          echo "=AKHIR $(du -sh "$DIR" 2>/dev/null | cut -f1)"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =AKAN*|=HAPUS*) echo "::notice title=${line#=}";;
+              =MODE*|=AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # --------------------------------------------------------------- orphan ----
+  orphan:
+    name: Volume tanpa server di panel
+    if: inputs.tugas == 'orphan'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      MODE: ${{ startsWith(inputs.konfirmasi, 'HAPUS') && 'hapus' || 'laporan' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Bandingkan volume dengan daftar server
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $MODE" <<'REMOTE' 2>&1
+          set -u
+          MODE="$1"
+          if [ ! -f /var/www/pterodactyl/.env ]; then echo "=GAGAL .env panel tidak ada"; exit 1; fi
+          PHPBIN="$(command -v php || true)"
+          [ -n "$PHPBIN" ] || { echo "=GAGAL php CLI tidak ada"; exit 1; }
+          cat > /tmp/uuids.php <<'PHP'
+          <?php
+          $env = [];
+          foreach (file('/var/www/pterodactyl/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+              if (!preg_match('/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$/', $line, $m)) { continue; }
+              $v = trim($m[2]); $len = strlen($v);
+              if ($len >= 2 && (($v[0] === '"' && $v[$len-1] === '"') || ($v[0] === "'" && $v[$len-1] === "'"))) { $v = substr($v, 1, -1); }
+              $env[$m[1]] = $v;
+          }
+          $host = $env['DB_HOST'] ?? '127.0.0.1';
+          if (in_array($host, ['localhost', '127.0.0.1'], true)) { $host = '127.0.0.1'; }
+          $pdo = new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s', $host, $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel'),
+                         $env['DB_USERNAME'] ?? 'pterodactyl', $env['DB_PASSWORD'] ?? '',
+                         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          foreach ($pdo->query('SELECT uuid, name FROM servers') as $r) {
+              echo $r['uuid'], '|', $r['name'], "\n";
+          }
+          PHP
+          "$PHPBIN" /tmp/uuids.php > /tmp/servers.txt 2>/tmp/uuids.err || { echo "=GAGAL query DB: $(tail -1 /tmp/uuids.err)"; exit 1; }
+          cut -d'|' -f1 /tmp/servers.txt | sort -u > /tmp/uuids.txt
+          echo "=DB $(wc -l < /tmp/uuids.txt) server terdaftar di panel"
+          echo "=VOL $(find /var/lib/pterodactyl/volumes -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l) folder volume"
+          found=0
+          for d in /var/lib/pterodactyl/volumes/*/; do
+            [ -d "$d" ] || continue
+            u="$(basename "$d")"
+            grep -qx "$u" /tmp/uuids.txt && continue
+            found=$((found + 1))
+            sz="$(du -sh "$d" 2>/dev/null | cut -f1)"
+            if [ "$MODE" = "hapus" ]; then
+              case "$d" in /var/lib/pterodactyl/volumes/*) ;; *) continue ;; esac
+              if ! grep -qx "$u" /tmp/uuids.txt; then
+                if rm -rf -- "$d"; then echo "=HAPUS $sz|$u"; else echo "=GAGAL hapus $u"; fi
+              fi
+            else
+              echo "=ORPHAN $sz|$u"
+            fi
+          done
+          echo "=JUMLAH $found volume tanpa server"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =ORPHAN*|=HAPUS*) echo "::notice title=${line#=}";;
+              =DB*|=VOL*|=JUMLAH*) echo "::notice title=Info::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
           exit 0
 
   # -------------------------------------------------------------- bersih ----
