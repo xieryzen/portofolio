@@ -92,6 +92,11 @@ final class ProfileController extends Controller
         $file = $_FILES['image'] ?? null;
         $profile = Profile::get();
 
+        if ($this->uploadTooLarge()) {
+            \flash('error', 'Berkas terlalu besar untuk server (batas ' . $this->uploadLimitMb() . ' MB). Kompres gambar lalu unggah lagi.');
+            $this->redirect('/admin/profile');
+        }
+
         if (!is_array($file)) {
             \flash('error', 'Pilih gambar terlebih dahulu.');
             $this->redirect('/admin/profile');
@@ -119,6 +124,11 @@ final class ProfileController extends Controller
         Auth::requireAdmin();
 
         $file = $_FILES['cv'] ?? null;
+
+        if ($this->uploadTooLarge()) {
+            \flash('error', 'Berkas terlalu besar untuk server (batas ' . $this->uploadLimitMb() . ' MB).');
+            $this->redirect('/admin/profile');
+        }
 
         if (!is_array($file)) {
             \flash('error', 'Pilih berkas CV terlebih dahulu.');

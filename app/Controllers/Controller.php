@@ -51,6 +51,56 @@ abstract class Controller
     }
 
     /**
+     * True bila ukuran kiriman melebihi post_max_size sehingga $_FILES kosong.
+     * Tanpa cek ini, pengguna hanya melihat "pilih berkas" padahal berkasnya kebesaran.
+     */
+    protected function uploadTooLarge(): bool
+    {
+        $length = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($length <= 0) {
+            return false;
+        }
+
+        $limit = self::iniBytes((string) ini_get('post_max_size'));
+
+        return $limit > 0 && $length > $limit;
+    }
+
+    /**
+     * Batas unggah efektif dalam MB (nilai terkecil antara upload_max_filesize
+     * dan post_max_size) untuk ditampilkan pada pesan galat.
+     */
+    protected function uploadLimitMb(): int
+    {
+        $upload = self::iniBytes((string) ini_get('upload_max_filesize'));
+        $post = self::iniBytes((string) ini_get('post_max_size'));
+        $candidates = array_filter([$upload, $post], static fn (int $v): bool => $v > 0);
+        if ($candidates === []) {
+            return 0;
+        }
+
+        return max(1, (int) floor(min($candidates) / 1048576));
+    }
+
+    private static function iniBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+
+        return (int) match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => $number,
+        };
+    }
+
+    /**
      * Ambil input POST yang sudah dipangkas.
      */
     protected function input(string $key, mixed $default = ''): mixed

@@ -67,7 +67,9 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Keahlian: tambah/ubah/hapus dengan kategori dan level.
 - Pengguna: daftar akun, ubah role, aktif/nonaktif, hapus (khusus owner).
 - Pesan: tandai dibaca, balas via email, hapus.
-- Pengaturan: judul situs, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
+- Pengaturan: judul situs, subjudul header, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
+- Identitas visual: unggah **logo header**, **favicon**, dan **banner beranda** dari Admin → Pengaturan
+  (gambar disimpan di `storage/uploads` dan disajikan lewat `/media/{berkas}`; bisa dihapus kapan pun).
 - **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
   lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
 - **CV (PDF)**: unggah/ganti/hapus CV dari halaman Profil.

@@ -232,6 +232,17 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
     overflow: hidden;
 }
 .brand-mark img { width: 100%; height: 100%; object-fit: cover; }
+.brand-mark.has-logo { background: rgba(10, 17, 32, .55); border: 1px solid var(--line-strong); padding: 3px; }
+.brand-mark.has-logo img { object-fit: contain; border-radius: 9px; }
+
+/* Kartu unggah gambar identitas (logo/favicon/banner) */
+.brand-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.brand-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(9, 15, 28, .55); }
+.brand-card h3 { margin: 0; font-size: 14px; }
+.brand-card .brand-preview { display: flex; align-items: center; justify-content: center; height: 96px; border-radius: 12px; border: 1px dashed var(--line-strong); background: rgba(4, 8, 18, .55); overflow: hidden; }
+.brand-card .brand-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.brand-card .brand-preview.is-banner img { width: 100%; height: 100%; object-fit: cover; }
+.brand-card .brand-preview span { font-size: 12px; color: var(--muted-2); }
 .brand-name { display: flex; flex-direction: column; line-height: 1.15; }
 .brand-name strong { font-size: 15px; }
 .brand-name span { font-size: 11.5px; color: var(--muted-2); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
@@ -326,6 +337,28 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* ---------------- Hero ---------------- */
 .hero { position: relative; padding: 74px 0 64px; }
+.hero.has-banner { overflow: hidden; }
+.hero.has-banner::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--hero-banner);
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: .42;
+    z-index: 0;
+    -webkit-mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
+    mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
+}
+.hero.has-banner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(4, 8, 18, .15) 0%, rgba(4, 8, 18, .92) 92%);
+    z-index: 0;
+}
+.hero.has-banner > .container { position: relative; z-index: 1; }
 .hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);

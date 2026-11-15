@@ -142,6 +142,36 @@ if (!function_exists('social_url')) {
     }
 }
 
+if (!function_exists('brand_logo')) {
+    /**
+     * URL logo header kustom (null bila belum diatur).
+     */
+    function brand_logo(): ?string
+    {
+        return media_url(setting('logo_file', ''));
+    }
+}
+
+if (!function_exists('brand_favicon')) {
+    /**
+     * URL favicon kustom (null bila belum diatur).
+     */
+    function brand_favicon(): ?string
+    {
+        return media_url(setting('favicon_file', ''));
+    }
+}
+
+if (!function_exists('hero_banner')) {
+    /**
+     * URL banner beranda kustom (null bila belum diatur).
+     */
+    function hero_banner(): ?string
+    {
+        return media_url(setting('banner_file', ''));
+    }
+}
+
 if (!function_exists('media_url')) {
     /**
      * URL untuk file upload (dilayani lewat route /media/{file}).

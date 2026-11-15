@@ -78,8 +78,28 @@ final class Profile
     {
         $column = $type === 'cover' ? 'cover' : 'avatar';
         $profile = self::get();
+        $pdo = Database::connection();
 
-        $statement = Database::connection()->prepare(
+        // Belum ada baris profil (mis. unggah gambar sebelum simpan form):
+        // buat baris baru supaya gambar benar-benar tersimpan.
+        if (!isset($profile['id'])) {
+            $statement = $pdo->prepare(
+                "INSERT INTO profiles (full_name, headline, tagline, bio, $column, updated_at)
+                 VALUES (:name, :headline, :tagline, :bio, :file, :updated)"
+            );
+            $statement->execute([
+                'name' => 'Nama Anda',
+                'headline' => '',
+                'tagline' => '',
+                'bio' => '',
+                'file' => $fileName,
+                'updated' => date('Y-m-d H:i:s'),
+            ]);
+
+            return;
+        }
+
+        $statement = $pdo->prepare(
             "UPDATE profiles SET $column = :file, updated_at = :updated WHERE id = :id"
         );
         $statement->execute([

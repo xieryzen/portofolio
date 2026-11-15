@@ -43,8 +43,9 @@ $others = $isSearching
     : array_values(array_filter($projects, static fn (array $p): bool => !in_array((int) $p['id'], $featuredIds, true)));
 ?>
 
+<?php $banner = hero_banner(); ?>
 <!-- ============ HERO ============ -->
-<section class="hero">
+<section class="hero<?= $banner ? ' has-banner' : '' ?>"<?= $banner ? ' style="--hero-banner: url(&quot;' . e($banner) . '&quot;)"' : '' ?>>
     <div class="container">
         <div class="hero-grid">
             <div>
