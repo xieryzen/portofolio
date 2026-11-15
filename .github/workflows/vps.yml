@@ -801,6 +801,29 @@ jobs:
           done <<< "$out" || true
           exit 0
 
+      - name: Berkas backup besar (di luar folder)
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR=/var/lib/pterodactyl/backups
+          find "$DIR" -maxdepth 1 -type f -printf '%s|%TY-%Tm-%Td|%f\n' 2>/dev/null | sort -rn | head -12 | sed 's/^/=FILE /'
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =FILE*)
+                data="${line#=FILE }"
+                printf '%s\n' "$data" | awk -F'|' '{printf "::notice title=Berkas::%.0f MB | %s | %s\n", $1/1048576, $2, $3}'
+                ;;
+            esac
+          done <<< "$out" || true
+          exit 0
+
   # -------------------------------------------------------------- bersih ----
   bersih:
     name: Bersih-bersih VPS
