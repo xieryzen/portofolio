@@ -282,9 +282,14 @@ Kalau mesin yang dipakai tidak bisa menjangkau IP VPS, pakai workflow **VPS**
 | Tugas | Isi | Butuh |
 | --- | --- | --- |
 | `cek` | DNS, port 22/80/443, banner SSH, HTTP panel & situs | — |
+| `info` | Info server: OS, disk, Docker/Wings, folder volume, container, nginx, sertifikat (baca saja) | SSH |
+| `deploy-ssh` | Unduh ZIP rilis → ekstrak ke volume server panel → chown → restart container (wajib konfirmasi `DEPLOY`) | SSH |
 | `bersih-laporan` | Menjalankan `cleanup-vps.sh` mode laporan | SSH |
 | `bersih-hapus` | Menjalankan `cleanup-vps.sh --apply` (wajib isi konfirmasi `BERSIHKAN`) | SSH |
 | `deploy-panel` | Deploy rilis lewat Client API (`panel-deploy.sh`) | API key panel |
+
+Hasil tiap langkah juga dikirim sebagai *anotasi* (`::notice::` / `::error::`) sehingga bisa dibaca
+tanpa mengunduh log: `gh api repos/<owner>/<repo>/check-runs/<job-id>/annotations`.
 
 Tambahkan secrets sekali di **Settings → Secrets and variables → Actions**:
 

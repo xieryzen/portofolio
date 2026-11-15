@@ -8,8 +8,12 @@ name: VPS
 #   VPS_USER          (opsional, default root)
 #   VPS_SSH_KEY       kunci privat SSH (disarankan) ATAU
 #   VPS_SSH_PASSWORD  kata sandi SSH (fallback)
-#   PTERO_SERVER_ID   UUID server panel, untuk tugas deploy-panel
+#   PTERO_SERVER_ID   UUID server panel (default: server Xiero Portofolio)
 #   PTERO_API_KEY     API key panel (Client API, read & write)
+#
+# Hasil penting dikirim sebagai anotasi (::notice:: / ::error::) sehingga bisa
+# dibaca lewat API tanpa mengunduh log:
+#   gh api repos/<owner>/<repo>/check-runs/<job-id>/annotations
 #
 # Jangan pernah menaruh kredensial di file repo atau di chat.
 
@@ -23,16 +27,18 @@ on:
         type: choice
         options:
           - cek
+          - info
+          - deploy-ssh
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
       konfirmasi:
-        description: 'Ketik BERSIHKAN untuk tugas bersih-hapus'
+        description: 'Ketik BERSIHKAN atau DEPLOY untuk tugas yang butuh konfirmasi'
         required: false
         default: ''
         type: string
       tag:
-        description: 'Tag rilis untuk deploy-panel (kosong = terbaru)'
+        description: 'Tag rilis (kosong = terbaru)'
         required: false
         default: ''
         type: string
@@ -45,26 +51,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Tugas "cek" dipecah per titik uji: setiap job berdiri sendiri sehingga
-  # lulus/gagalnya terlihat jelas di API tanpa perlu mengunduh log:
-  #   gh api repos/<owner>/<repo>/actions/runs/<id>/jobs
+  # ---------------------------------------------------------------- cek ----
+  # Setiap titik uji adalah job terpisah agar lulus/gagalnya terlihat jelas.
   cek-dns:
     name: Cek DNS
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     steps:
-      - name: Resolusi host + domain
+      - name: Resolusi domain panel & situs
         run: |
           ok=1
-          for host in "$VPS_HOST" panel.hexnitystore.com portofolio.xiero.biz.id; do
+          for host in panel.hexnitystore.com portofolio.xiero.biz.id; do
             ip="$(getent hosts "$host" | awk '{print $1}' | head -1)"
             if [ -n "$ip" ]; then
               echo "$host -> $ip"
               echo "::notice title=DNS::$host -> $ip"
             else
-              echo "$host -> GAGAL"
               echo "::error title=DNS gagal::$host tidak ter-resolve"
               ok=0
             fi
@@ -72,45 +74,47 @@ jobs:
           [ "$ok" = 1 ]
 
   cek-port22:
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     name: Cek port 22
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     steps:
       - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22' && echo "port 22 terbuka"
 
   cek-port80:
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     name: Cek port 80
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     steps:
       - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/80' && echo "port 80 terbuka"
 
   cek-port443:
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     name: Cek port 443
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     steps:
       - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/443' && echo "port 443 terbuka"
 
   cek-ssh:
-    env:
-      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     name: Cek banner SSH
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
     steps:
       - name: Baca banner
         run: |
-          set -euo pipefail
           banner="$(timeout 12 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' | tr -d '\000' || true)"
           echo "banner: ${banner:-<kosong>}"
-          case "$banner" in SSH-*) exit 0 ;; *) exit 1 ;; esac
+          case "$banner" in
+            SSH-*) echo "::notice title=SSH::$banner" ; exit 0 ;;
+            *) echo "::error title=SSH gagal::banner tidak diterima" ; exit 1 ;;
+          esac
 
   cek-web:
     name: Cek panel & situs
@@ -119,26 +123,166 @@ jobs:
     steps:
       - name: Panel HTTPS
         run: |
-          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://panel.hexnitystore.com || echo 000)"
-          echo "panel -> HTTP $code"
-          if [ "${code:0:1}" = "2" ] || [ "${code:0:1}" = "3" ]; then
-            echo "::notice title=Panel::panel HTTP $code"
-          else
-            echo "::error title=Panel gagal::panel HTTP $code"
-            exit 1
-          fi
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://panel.hexnitystore.com 2>/dev/null || true)"
+          echo "panel -> HTTP ${code:-000}"
+          case "${code:-000}" in
+            2*|3*) echo "::notice title=Panel::HTTP $code" ;;
+            *) echo "::error title=Panel gagal::HTTP ${code:-000}" ; exit 1 ;;
+          esac
 
       - name: Situs portofolio
         run: |
-          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id || echo 000)"
-          echo "situs -> HTTP $code"
-          if [ "${code:0:1}" = "2" ] || [ "${code:0:1}" = "3" ]; then
-            echo "::notice title=Situs::situs HTTP $code"
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id 2>/dev/null || true)"
+          echo "situs -> HTTP ${code:-000}"
+          case "${code:-000}" in
+            2*|3*) echo "::notice title=Situs::HTTP $code" ;;
+            *) echo "::error title=Situs gagal::HTTP ${code:-000}" ; exit 1 ;;
+          esac
+
+  # --------------------------------------------------------------- info ----
+  info:
+    name: Info server (baca saja)
+    if: inputs.tugas == 'info'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kumpulkan informasi
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          SERVER_ID="$1"
+          . /etc/os-release 2>/dev/null || true
+          echo "=OS ${PRETTY_NAME:-?} (kernel $(uname -r))"
+          echo "=UPTIME $(uptime -p 2>/dev/null || uptime)"
+          echo "=DISK $(df -h / | awk 'NR==2{print $3" terpakai dari "$2" ("$5")"}')"
+          echo "=MEM $(free -m 2>/dev/null | awk 'NR==2{print $3" MB / "$2" MB"}')"
+          echo "=DOCKER $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo tidak-ada)"
+          echo "=WINGS $(systemctl is-active wings 2>/dev/null || echo tidak-ada)"
+          echo "=PANEL_DIR $( [ -d /var/www/pterodactyl ] && echo ada || echo tidak )"
+          VOL="/var/lib/pterodactyl/volumes/$SERVER_ID"
+          echo "=SERVER_DIR $( [ -d "$VOL" ] && echo "ada ($(du -sh "$VOL" 2>/dev/null | cut -f1))" || echo tidak )"
+          if [ -d "$VOL" ]; then
+            echo "=ISI $(ls -A "$VOL" 2>/dev/null | head -10 | tr '\n' ' ')"
+            echo "=START_SH $( [ -f "$VOL/start.sh" ] && echo ada || echo tidak )"
+            echo "=DATABASE $( [ -f "$VOL/storage/database.sqlite" ] && echo ada || echo tidak )"
+            echo "=ENV $( [ -f "$VOL/.env" ] && echo ada || echo tidak )"
+          fi
+          echo "=CONTAINER $(docker ps -a --format '{{.Names}}|{{.Status}}' 2>/dev/null | grep -F "$SERVER_ID" | head -1)"
+          echo "=NGINX $(ls /etc/nginx/sites-enabled 2>/dev/null | tr '\n' ' ')"
+          echo "=CERT $( [ -d /etc/letsencrypt/live/portofolio.xiero.biz.id ] && echo ada || echo tidak )"
+          echo "=PORT_PANEL $(ss -ltn 2>/dev/null | awk 'NR>1{print $4}' | sed 's/.*://' | sort -un | head -12 | tr '\n' ' ')"
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*)
+                n=$((n+1))
+                [ "$n" -le 14 ] && echo "::notice title=Info::${line#=}"
+                ;;
+            esac
+          done <<< "$out"
+
+  # --------------------------------------------------------- deploy-ssh ----
+  deploy-ssh:
+    name: Deploy ke volume panel (SSH)
+    if: inputs.tugas == 'deploy-ssh'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi konfirmasi
+        if: inputs.konfirmasi != 'DEPLOY'
+        run: |
+          echo "::error::Tugas deploy-ssh butuh isian konfirmasi = DEPLOY"
+          exit 1
+
+      - name: Tentukan tag rilis
+        id: rilis
+        run: |
+          tag="${{ inputs.tag }}"
+          if [ -z "$tag" ]; then
+            tag="$(curl -sS https://api.github.com/repos/${{ github.repository }}/releases/latest \
+                   | python3 -c 'import json,sys;print(json.load(sys.stdin).get("tag_name",""))')"
+          fi
+          [ -n "$tag" ] || { echo "::error::Tidak bisa menentukan tag rilis"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Rilis::$tag"
+
+      - name: Unduh & ekstrak ke volume server
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          TAG="${{ steps.rilis.outputs.tag }}"
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $TAG $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          TAG="$1"; UUID="$2"
+          BASE="/var/lib/pterodactyl/volumes/$UUID"
+          ZIP="portofolio-$TAG.zip"
+          URL="https://github.com/xieryzen/portofolio/releases/download/$TAG/$ZIP"
+          echo "=DIR $BASE"
+          if [ ! -d "$BASE" ]; then echo "=GAGAL volume server tidak ditemukan"; exit 1; fi
+          echo "=UNDUH $URL"
+          if ! curl -fsSL --retry 3 -o "/tmp/$ZIP" "$URL"; then echo "=GAGAL unduh paket"; exit 1; fi
+          echo "=OK unduh $(du -h "/tmp/$ZIP" | cut -f1)"
+          if ! unzip -q -o "/tmp/$ZIP" -d "$BASE"; then echo "=GAGAL ekstrak"; exit 1; fi
+          rm -f "/tmp/$ZIP"
+          echo "=OK ekstrak ke volume"
+          if [ -f "$BASE/start.sh" ]; then echo "=OK start.sh ada"; else echo "=GAGAL start.sh tidak ada"; fi
+          if [ -f "$BASE/storage/database.sqlite" ]; then echo "=OK database lama dipertahankan"; else echo "=INFO database belum ada (instalasi baru)"; fi
+          NAME="$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -F "$UUID" | head -1)"
+          if [ -n "$NAME" ]; then
+            USR="$(docker inspect -f '{{.Config.User}}' "$NAME" 2>/dev/null)"
+            echo "=CONTAINER $NAME (user=${USR:-default})"
+            if [ -n "$USR" ] && [ "$USR" != "root" ]; then
+              chown -R "$USR" "$BASE" 2>/dev/null && echo "=OK chown $USR"
+            fi
+            chmod -R 775 "$BASE/storage" 2>/dev/null && echo "=OK chmod storage"
+            if docker restart "$NAME" >/dev/null 2>&1; then echo "=OK container direstart"; else echo "=GAGAL restart container"; fi
           else
-            echo "::error title=Situs gagal::situs HTTP $code"
+            echo "=INFO container belum ada — klik Start di panel"
+          fi
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 14 ] && echo "::notice title=Deploy::${line#=}" ;;
+            esac
+          done <<< "$out"
+          if echo "$out" | grep -q '^=GAGAL'; then
+            echo "::error title=Deploy::ada langkah yang gagal"
             exit 1
           fi
 
+      - name: Cek situs dari runner
+        if: always()
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id 2>/dev/null || true)"
+          echo "situs -> HTTP ${code:-000}"
+          case "${code:-000}" in
+            2*|3*) echo "::notice title=Situs::HTTP $code" ;;
+            *) echo "::warning title=Situs::HTTP ${code:-000} — domain/SSL belum siap, cek nginx+certbot" ;;
+          esac
+
+  # -------------------------------------------------------------- bersih ----
   bersih:
     name: Bersih-bersih VPS
     if: inputs.tugas == 'bersih-laporan' || inputs.tugas == 'bersih-hapus'
@@ -147,8 +291,7 @@ jobs:
       VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
       VPS_USER: ${{ secrets.VPS_USER || 'root' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Validasi konfirmasi
         if: inputs.tugas == 'bersih-hapus' && inputs.konfirmasi != 'BERSIHKAN'
@@ -156,57 +299,37 @@ jobs:
           echo "::error::Tugas bersih-hapus butuh isian konfirmasi = BERSIHKAN"
           exit 1
 
-      - name: Siapkan SSH
+      - name: Jalankan cleanup-vps.sh
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          ssh-keyscan -T 10 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          if [ -n "${VPS_SSH_KEY:-}" ]; then
-            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy
-            chmod 600 ~/.ssh/id_deploy
-            echo "SSH_AUTH=key" >> "$GITHUB_ENV"
-          elif [ -n "${VPS_SSH_PASSWORD:-}" ]; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq sshpass >/dev/null
-            echo "SSH_AUTH=password" >> "$GITHUB_ENV"
-          else
-            echo "::error::Tambahkan secret VPS_SSH_KEY (disarankan) atau VPS_SSH_PASSWORD."
-            exit 1
-          fi
-
-      - name: Jalankan cleanup-vps.sh
-        env:
-          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
           MODE: ${{ inputs.tugas }}
         run: |
-          set -euo pipefail
-          args=()
-          [ "$MODE" = "bersih-hapus" ] && args+=("--apply")
-          common=(-o StrictHostKeyChecking=yes -o ConnectTimeout=20)
-          if [ "${SSH_AUTH}" = "key" ]; then
-            full=(ssh -i ~/.ssh/id_deploy "${common[@]}" -o BatchMode=yes)
-          else
-            full=(sshpass -p "$VPS_SSH_PASSWORD" ssh "${common[@]}" -o BatchMode=no -o PreferredAuthentications=password -o PubkeyAuthentication=no)
-          fi
-          # Root langsung; user lain pakai sudo non-interaktif.
+          set -uo pipefail
+          args=""
+          [ "$MODE" = "bersih-hapus" ] && args="--apply"
           if [ "${VPS_USER}" = "root" ]; then
-            remote="bash -s -- ${args[*]}"
+            out="$(bash deploy/gha-ssh.sh "bash -s -- $args" < deploy/cleanup-vps.sh 2>&1)" || true
           else
-            remote="sudo -n bash -s -- ${args[*]}"
+            out="$(bash deploy/gha-ssh.sh "sudo -n bash -s -- $args" < deploy/cleanup-vps.sh 2>&1)" || true
           fi
-          # Skrip audited dari repo dijalankan langsung di VPS, tanpa menulis file.
-          "${full[@]}" "$VPS_USER@$VPS_HOST" "$remote" < deploy/cleanup-vps.sh
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              *"Ringkasan /tmp"*|*"Ringkasan /var/tmp"*|*"Ukuran sekarang"*|*"Image dangling"*|*"Pemakaian"*|*"volumes :"*|*"backups :"*|*"Jumlah folder backup"*|*"SELESAI"*|*"LAPORAN"*)
+                n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Cleanup::$(echo "$line" | sed 's/^[0-9-]* [0-9:]* //')" ;;
+            esac
+          done <<< "$out"
+          echo "$out" | grep -q "GAGAL" && echo "::warning title=Cleanup::ada langkah yang gagal, lihat log"
 
+  # --------------------------------------------------------- deploy-panel ----
   deploy:
     name: Deploy lewat API panel
     if: inputs.tugas == 'deploy-panel'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Jalankan panel-deploy.sh
         env:
