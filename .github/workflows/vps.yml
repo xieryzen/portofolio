@@ -29,6 +29,7 @@ on:
           - cek
           - info
           - deploy-ssh
+          - panel-start
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -202,6 +203,7 @@ jobs:
                 ;;
             esac
           done <<< "$out"
+          exit 0
 
   # --------------------------------------------------------- deploy-ssh ----
   deploy-ssh:
@@ -276,7 +278,10 @@ jobs:
             chmod -R 775 "$BASE/storage" 2>/dev/null && echo "=OK chmod storage"
             if docker restart "$NAME" >/dev/null 2>&1; then echo "=OK container direstart"; else echo "=GAGAL restart container"; fi
           else
-            echo "=INFO container belum ada — klik Start di panel"
+            U="$(id -u pterodactyl 2>/dev/null || echo 988)"
+            chown -R "$U:$U" "$BASE" 2>/dev/null && echo "=OK chown $U:$U"
+            chmod -R 775 "$BASE/storage" 2>/dev/null && echo "=OK chmod storage"
+            echo "=INFO container belum ada — perlu Start"
           fi
           REMOTE
           )" || true
@@ -301,6 +306,75 @@ jobs:
             2*|3*) echo "::notice title=Situs::HTTP $code" ;;
             *) echo "::warning title=Situs::HTTP ${code:-000} — domain/SSL belum siap, cek nginx+certbot" ;;
           esac
+
+  # ---------------------------------------------------------- panel-start ----
+  panel-start:
+    name: Start server di panel (artisan)
+    if: inputs.tugas == 'panel-start'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Perintahkan start lewat artisan
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          UUID="$1"
+          ART=/var/www/pterodactyl/artisan
+          if [ ! -f "$ART" ]; then echo "=GAGAL artisan tidak ditemukan"; exit 1; fi
+          cd /var/www/pterodactyl || exit 1
+          CMDS="$(php artisan list --raw 2>/dev/null | awk '{print $1}' | grep -E '^p:server' | tr '\n' ' ')"
+          echo "=CMDS ${CMDS:-tidak-ada}"
+          if echo "$CMDS" | grep -q 'p:server:bulk-power'; then
+            if php artisan p:server:bulk-power start "$UUID" >/tmp/power.log 2>&1; then
+              echo "=OK bulk-power start"
+            else
+              echo "=GAGAL bulk-power: $(tail -2 /tmp/power.log | tr '\n' ' ')"
+            fi
+          else
+            echo "=INFO p:server:bulk-power tidak tersedia"
+          fi
+          for i in 1 2 3 4 5 6; do
+            sleep 5
+            LINE="$(docker ps -a --format '{{.Names}}|{{.Status}}|{{.Ports}}' 2>/dev/null | grep -F "$UUID" | head -1)"
+            [ -n "$LINE" ] && break
+          done
+          echo "=CONTAINER ${LINE:-belum-ada}"
+          PORT="$(echo "${LINE:-}" | sed -n 's/.*:\([0-9]\{2,5\}\)->.*/\1/p' | head -1)"
+          echo "=PORT ${PORT:-0}"
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 10 ] && echo "::notice title=Start::${line#=}" ;;
+            esac
+          done <<< "$out" || true
+          port="$(printf '%s\n' "$out" | sed -n 's/^=PORT \([0-9][0-9]*\)$/\1/p' | head -1)"
+          if [ -n "$port" ] && [ "$port" != "0" ]; then
+            code="$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "http://$VPS_HOST:$port/" 2>/dev/null || true)"
+            echo "::notice title=HTTP::http://$VPS_HOST:$port/ -> ${code:-000}"
+          fi
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
 
   # -------------------------------------------------------------- bersih ----
   bersih:
