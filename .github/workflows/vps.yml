@@ -879,7 +879,7 @@ jobs:
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =AKAN*|=HAPUS*) echo "::notice title=${line#=}";;
+              =AKAN*|=HAPUS*) echo "::notice title=Item::${line#=}";;
               =MODE*|=AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
@@ -965,7 +965,7 @@ jobs:
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =ORPHAN*|=HAPUS*) echo "::notice title=${line#=}";;
+              =ORPHAN*|=HAPUS*) echo "::notice title=Item::${line#=}";;
               =DB*|=VOL*|=JUMLAH*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
