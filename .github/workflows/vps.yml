@@ -1427,13 +1427,20 @@ jobs:
           echo "=HOME mxn-avatar=$(printf '%s' "$HOME_HTML" | grep -o 'media/[A-Za-z0-9._-]*' | head -3 | tr '\n' ' ')"
           echo "=DIRBANDING $(docker inspect -f '{{range .Mounts}}{{.Source}}->{{.Destination}} {{end}}' "$CID" 2>/dev/null | cut -c1-200)"
           echo "=CMD1 $(docker exec "$CID" sh -c 'tr "\\0" " " < /proc/1/cmdline' 2>&1 | cut -c1-400)"
+          # Bersihkan berkas uji supaya tidak tampil di situs pengguna.
+          for T in avatar cover; do
+            curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/admin/profile/image/remove" -d "_token=$T2" -d "type=$T"
+          done
+          curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/admin/profile/cv/delete" -d "_token=$T2"
+          echo "=SISA $(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $r=$d->query("SELECT avatar, cover FROM profiles LIMIT 1")->fetch(PDO::FETCH_ASSOC); $cv=$d->query("SELECT setting_value FROM settings WHERE setting_key=\"cv_file\"")->fetchColumn(); echo "avatar=".($r["avatar"]?:"kosong")." cover=".($r["cover"]?:"kosong")." cv=".($cv ?: "kosong");' 2>&1 | head -1)"
           rm -f "$JAR" /tmp/uji.png /tmp/uji.pdf /tmp/resp.html
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*|=COVER*|=CVUPLOAD*|=HOME*|=DIRBANDING*|=CMD1*) echo "::notice title=Uji::${line#=}";;
+              =SISA*) echo "::notice title=Bersih::${line#=}";;
+              =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*|=COVER*|=CVUPLOAD*|=HOME*) echo "::notice title=Uji::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
