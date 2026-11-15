@@ -11,11 +11,7 @@ $fullTitle = $pageTitle . ' — ' . $siteTitle;
 $name = (string) ($profile['full_name'] ?? $siteTitle);
 $initial = mb_strtoupper(mb_substr($name, 0, 1, 'UTF-8'), 'UTF-8');
 $customFavicon = brand_favicon();
-$favicon = $customFavicon ?: 'data:image/svg+xml,' . rawurlencode(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="' . $accent . '"/>'
-    . '<text x="32" y="44" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="#08101f" text-anchor="middle">'
-    . e($initial) . '</text></svg>'
-);
+$favicon = $customFavicon ?: asset('icons/favicon-32.png');
 ?>
 <!doctype html>
 <html lang="id" style="--accent: <?= e($accent) ?>" data-sw="<?= e(app_url('/sw.js')) ?>">
@@ -27,10 +23,7 @@ $favicon = $customFavicon ?: 'data:image/svg+xml,' . rawurlencode(
     <meta name="theme-color" content="#060a14">
     <meta name="color-scheme" content="dark">
     <link rel="icon" href="<?= e($favicon) ?>">
-    <?php if (!$customFavicon): ?>
-        <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('icons/favicon-32.png')) ?>">
-    <?php endif; ?>
-    <link rel="apple-touch-icon" href="<?= e($customFavicon ?: asset('icons/apple-touch-icon.png')) ?>">
+    <link rel="apple-touch-icon" href="<?= e(brand_favicon() ?: asset('icons/apple-touch-icon.png')) ?>">
     <link rel="manifest" href="<?= e(asset('manifest.webmanifest')) ?>">
     <script src="<?= e(asset('assets/js/theme.js')) ?>"></script>
     <link rel="stylesheet" href="<?= e(asset('assets/css/app.css')) ?>">

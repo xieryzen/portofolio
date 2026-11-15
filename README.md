@@ -72,6 +72,10 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
   (gambar disimpan di `storage/uploads` dan disajikan lewat `/media/{berkas}`; bisa dihapus kapan pun).
   Logo dan favicon otomatis dinormalkan menjadi **persegi 1:1 (512×512, PNG transparan)**
   sehingga ukurannya selalu konsisten berapa pun rasio gambar yang diunggah.
+- **Aset identitas bawaan**: `public/icons/logo-xiero-512.png` (logo header),
+  `public/icons/favicon-32.png` + `icon-192/512` + `apple-touch-icon.png` (ikon & PWA),
+  `public/assets/img/hero-banner.jpg|webp` (banner beranda), dan `og-cover.jpg` (pratinjau tautan).
+  Semua dibangun ulang dari satu logo sumber lewat `bash deploy/brand/build-assets.sh [logo.png]`.
 - **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
   lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
 - **CV (PDF)**: unggah/ganti/hapus CV dari halaman Profil.
