@@ -92,6 +92,52 @@ jobs:
           if (hero_banner() !== app_url("/media/uji-banner.png")) { fwrite(STDERR, "hero_banner salah\n"); exit(1); }
           if (trim(setting("brand_subtitle")) !== "Subjudul uji header") { fwrite(STDERR, "brand_subtitle salah\n"); exit(1); }
 
+          // Logo & favicon dipaksa persegi 1:1, avatar/cover tidak.
+          if (function_exists("imagecreatetruecolor")) {
+              $wide = imagecreatetruecolor(300, 100);
+              imagefilledrectangle($wide, 0, 0, 299, 99, imagecolorallocate($wide, 40, 90, 200));
+              imagepng($wide, "/tmp/wide-logo.png");
+              imagedestroy($wide);
+
+              $fake = [
+                  "error" => UPLOAD_ERR_OK,
+                  "size" => filesize("/tmp/wide-logo.png"),
+                  "tmp_name" => "/tmp/wide-logo.png",
+                  "name" => "wide-logo.png",
+              ];
+              $hasil = App\Uploader::image($fake, "logo");
+              if (($hasil["ok"] ?? false) !== true) { fwrite(STDERR, "unggah logo gagal: " . ($hasil["error"] ?? "-") . "\n"); exit(1); }
+              $logoPath = App\Uploader::directory() . "/" . $hasil["file"];
+              $dim = getimagesize($logoPath);
+              if (($dim[0] ?? 0) !== 512 || ($dim[1] ?? 0) !== 512) {
+                  fwrite(STDERR, "logo tidak persegi 512x512: " . ($dim[0] ?? 0) . "x" . ($dim[1] ?? 0) . "\n");
+                  exit(1);
+              }
+              if (!str_ends_with((string) $hasil["file"], ".png")) { fwrite(STDERR, "logo persegi harus PNG\n"); exit(1); }
+              @unlink($logoPath);
+
+              $wide2 = imagecreatetruecolor(300, 100);
+              imagefilledrectangle($wide2, 0, 0, 299, 99, imagecolorallocate($wide2, 200, 90, 40));
+              imagepng($wide2, "/tmp/wide-avatar.png");
+              imagedestroy($wide2);
+              $fakeAvatar = [
+                  "error" => UPLOAD_ERR_OK,
+                  "size" => filesize("/tmp/wide-avatar.png"),
+                  "tmp_name" => "/tmp/wide-avatar.png",
+                  "name" => "wide-avatar.png",
+              ];
+              $avatarHasil = App\Uploader::image($fakeAvatar, "avatar");
+              if (($avatarHasil["ok"] ?? false) !== true) { fwrite(STDERR, "unggah avatar gagal\n"); exit(1); }
+              $avatarPath = App\Uploader::directory() . "/" . $avatarHasil["file"];
+              $avatarDim = getimagesize($avatarPath);
+              if (($avatarDim[0] ?? 0) === ($avatarDim[1] ?? 1)) { fwrite(STDERR, "avatar tidak boleh dipaksa persegi\n"); exit(1); }
+              @unlink($avatarPath);
+
+              echo "✔ logo dipaksa persegi 512x512, avatar tetap mengikuti rasio\n";
+          } else {
+              echo "! GD tidak tersedia, uji persegi dilewati\n";
+          }
+
           App\Settings::set("logo_file", "");
           App\Settings::flush();
           if (brand_logo() !== null) { fwrite(STDERR, "brand_logo harus null saat kosong\n"); exit(1); }

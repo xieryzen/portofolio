@@ -70,6 +70,8 @@ panel admin dipakai untuk mengelola semuanya — dibuat agar **ringan dan bisa l
 - Pengaturan: judul situs, subjudul header, meta description, warna aksen, footer, aktif/nonaktif kontak & registrasi.
 - Identitas visual: unggah **logo header**, **favicon**, dan **banner beranda** dari Admin → Pengaturan
   (gambar disimpan di `storage/uploads` dan disajikan lewat `/media/{berkas}`; bisa dihapus kapan pun).
+  Logo dan favicon otomatis dinormalkan menjadi **persegi 1:1 (512×512, PNG transparan)**
+  sehingga ukurannya selalu konsisten berapa pun rasio gambar yang diunggah.
 - **Cadangan**: unduh database (SQLite) atau satu ZIP berisi database + upload + rilis, lalu pulihkan
   lewat upload ZIP. Salinan database sebelum restore disimpan otomatis di `storage/backups/`.
 - **CV (PDF)**: unggah/ganti/hapus CV dari halaman Profil.

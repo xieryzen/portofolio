@@ -112,6 +112,19 @@ final class Uploader
 
         @chmod($destination, 0644);
 
+        $safePrefix = strtolower((string) (preg_replace('~[^a-z0-9]~i', '', $prefix) ?: 'img'));
+
+        // Logo header & favicon selalu dibuat persegi (1:1) agar ukurannya konsisten.
+        if (in_array($safePrefix, ['logo', 'favicon'], true)) {
+            $square = Image::toSquare($destination);
+
+            if ($square !== null) {
+                @unlink($destination);
+
+                return ['ok' => true, 'file' => $square['file']];
+            }
+        }
+
         // Optimasi: konversi ke WebP + batasi lebar (bila GD tersedia).
         $optimized = Image::toWebp($destination, $mime, $name);
         if ($optimized !== null) {

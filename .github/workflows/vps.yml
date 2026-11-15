@@ -1480,7 +1480,12 @@ jobs:
           EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
           PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
           BASE="https://portofolio.xiero.biz.id"
-          printf 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAHUlEQVR42u3OMQEAAAgDoC251a3gLwSgSZMmTZr0zwEBAQH/0kR9AAAAAElFTkSuQmCC' | base64 -d > /tmp/brand.png
+          # Gambar uji sengaja TIDAK persegi (160x60) untuk membuktikan logo dipaksa 1:1.
+          docker exec "$CID" php -r '$im=imagecreatetruecolor(160,60); imagefilledrectangle($im,0,0,159,59,imagecolorallocate($im,60,120,220)); imagepng($im,"/home/container/.uji-lebar.png");' 2>/dev/null
+          if [ -f "$DIR/.uji-lebar.png" ]; then cp "$DIR/.uji-lebar.png" /tmp/brand.png; fi
+          [ -f /tmp/brand.png ] || printf 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAHUlEQVR42u3OMQEAAAgDoC251a3gLwSgSZMmTZr0zwEBAQH/0kR9AAAAAElFTkSuQmCC' | base64 -d > /tmp/brand.png
+          DIMASAL="$(docker exec "$CID" php -r 'if (function_exists("getimagesize")) { $d=getimagesize("/home/container/.uji-lebar.png"); echo $d ? $d[0]."x".$d[1] : "?"; }' 2>/dev/null | head -1)"
+          echo "=UKURANASAL ${DIMASAL:-?}"
           JAR="$(mktemp)"
           T1="$(curl -fsS -c "$JAR" "$BASE/login" | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
           curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/login" \
@@ -1498,7 +1503,8 @@ jobs:
           for T in logo favicon banner; do
             F="$(printf '%s' "$SET" | sed -E "s/.*\"${T}_file\":\"([^\"]*)\".*/\1/")"
             if [ -z "$F" ]; then echo "=BERKAS $T kosong"; continue; fi
-            echo "=BERKAS $T=$F|media=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$F")|di-header=$(printf '%s' "$HOME_HTML" | grep -c "media/$F")"
+            DIM="$(docker exec "$CID" php -r '$d=getimagesize("/home/container/storage/uploads/" . $argv[1]); echo $d ? $d[0]."x".$d[1] : "?";' "$F" 2>/dev/null | head -1)"
+            echo "=BERKAS $T=$F|$DIM|media=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$F")|di-header=$(printf '%s' "$HOME_HTML" | grep -c "media/$F")"
           done
           echo "=BANNERKELAS $(printf '%s' "$HOME_HTML" | grep -c 'hero has-banner')"
           echo "=SUBTITLE $(printf '%s' "$HOME_HTML" | grep -o 'class="brand-name".\{0,160\}' | head -1 | tr -d '\n' | cut -c1-160)"
@@ -1507,13 +1513,13 @@ jobs:
           done
           SISA="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $n=0; foreach ($d->query("SELECT setting_value FROM settings WHERE setting_key IN (\"logo_file\",\"favicon_file\",\"banner_file\")") as $r) { if (trim((string)$r[0])!==\"\") $n++; } echo $n;' 2>&1 | head -1)"
           echo "=BERSIH sisa-nonaktif=$SISA"
-          rm -f "$JAR" /tmp/brand.png
+          rm -f "$JAR" /tmp/brand.png "$DIR/.uji-lebar.png"
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =TOKEN*|=UNGGAH*|=DB*|=BERKAS*|=BANNERKELAS*|=SUBTITLE*|=BERSIH*) echo "::notice title=Identitas::${line#=}";;
+              =UKURANASAL*|=BERKAS*|=BERSIH*|=UNGGAH*|=TOKEN*) echo "::notice title=Identitas::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
