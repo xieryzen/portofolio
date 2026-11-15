@@ -39,6 +39,7 @@ on:
           - bkp-hapus
           - bkp-luar-hapus
           - kredensial
+          - akun
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1123,6 +1124,71 @@ jobs:
             esac
           done <<< "$out" || true
           if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # ---------------------------------------------------------------- akun ----
+  akun:
+    name: Daftar akun di database aplikasi
+    if: inputs.tugas == 'akun'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Baca tabel users (email disamarkan)
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          CID="$(docker ps -q --filter name=2ed93f7b 2>/dev/null | head -n 1)"
+          if [ -z "$CID" ]; then echo "=GAGAL container server tidak jalan"; exit 1; fi
+          echo "=CONTAINER ${CID:0:12}"
+          docker exec "$CID" php -r '
+            $path = "storage/database.sqlite";
+            if (!file_exists($path)) { echo "=GAGAL database.sqlite tidak ada\n"; exit(1); }
+            try {
+                $db = new PDO("sqlite:" . $path);
+                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            } catch (Throwable $e) {
+                echo "=GAGAL " . $e->getMessage() . "\n"; exit(2);
+            }
+            $cols = [];
+            foreach ($db->query("PRAGMA table_info(users)") as $c) { $cols[$c["name"]] = true; }
+            $has2fa = isset($cols["totp_enabled_at"]);
+            $sql = "SELECT id, email, role, is_active, updated_at" . ($has2fa ? ", totp_enabled_at" : "") . " FROM users ORDER BY id";
+            $n = 0;
+            foreach ($db->query($sql) as $u) {
+                $n++;
+                $mask = substr($u["email"], 0, 3) . "***" . strstr($u["email"], "@");
+                $fa = $has2fa ? (trim((string) $u["totp_enabled_at"]) !== "" ? "2fa=aktif" : "2fa=tidak") : "2fa=?";
+                printf("=USER #%d %s|%s|aktif=%s|%s|diubah=%s\n", $u["id"], $mask, $u["role"], $u["is_active"], $fa, $u["updated_at"]);
+            }
+            echo "=JUMLAH " . $n . " akun\n";
+          ' 2>&1 | head -20
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =USER*|=JUMLAH*|=CONTAINER*) echo "::notice title=Akun::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
           exit 0
 
   # --------------------------------------------------------------- orphan ----
