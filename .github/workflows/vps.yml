@@ -828,14 +828,14 @@ jobs:
 
   # ------------------------------------------------------------ bkp-hapus ----
   bkp-hapus:
-    name: Hapus backup lama (sisakan 2 terbaru)
+    name: Rapikan backup (simpan terbaru per server)
     if: inputs.tugas == 'bkp-hapus'
     runs-on: ubuntu-latest
     env:
       VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
       VPS_USER: ${{ secrets.VPS_USER || 'root' }}
       MODE: ${{ startsWith(inputs.konfirmasi, 'HAPUS') && 'hapus' || 'laporan' }}
-      SIMPAN: '2'
+      SIMPAN: '1'
     steps:
       - uses: actions/checkout@v4
 
@@ -849,7 +849,7 @@ jobs:
             exit 1
           fi
 
-      - name: Bersihkan berkas backup lama
+      - name: Hitung & hapus backup lama per server
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
@@ -857,37 +857,74 @@ jobs:
           set -uo pipefail
           out="$(bash deploy/gha-ssh.sh "bash -s -- $MODE $SIMPAN" <<'REMOTE' 2>&1
           set -u
-          MODE="$1"; KEEP="${2:-2}"
-          DIR=/var/lib/pterodactyl/backups
-          if [ ! -d "$DIR" ]; then echo "=GAGAL folder backup tidak ada"; exit 1; fi
-          echo "=MODE $MODE (menyimpan $KEEP berkas terbaru, folder tidak disentuh)"
-          echo "=AWAL $(du -sh "$DIR" 2>/dev/null | cut -f1)"
-          # Tampilkan dulu berkas terbaru yang dipertahankan.
-          find "$DIR" -maxdepth 1 -type f -printf '%T@|%s|%f\n' 2>/dev/null | sort -t'|' -k1 -rn \
-            | head -n "$KEEP" | while IFS='|' read -r ts size name; do
-                echo "=SIMPAN $(( size / 1048576 ))MB|$name"
-              done
-          echo "=RINGKAS $(find "$DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) berkas, total $(find "$DIR" -maxdepth 1 -type f -printf '%s\n' 2>/dev/null | awk '{s+=$1} END {printf "%d", s/1048576}')MB"
-          # Berkas (bukan folder) diurutkan dari yang terbaru; mulai nomor KEEP+1 dihapus.
-          find "$DIR" -maxdepth 1 -type f -printf '%T@|%s|%p\n' 2>/dev/null | sort -t'|' -k1 -rn \
-            | tail -n +$((KEEP + 1)) | while IFS='|' read -r ts size path; do
-                mb=$(( size / 1048576 ))
-                if [ "$MODE" = "hapus" ]; then
-                  case "$path" in "$DIR"/*) ;; *) echo "=LEWAT $(basename "$path")"; continue ;; esac
-                  if rm -f -- "$path"; then echo "=HAPUS ${mb}MB|$(basename "$path")"; else echo "=GAGAL $path"; fi
-                else
-                  echo "=AKAN ${mb}MB|$(basename "$path")"
-                fi
-              done
-          echo "=AKHIR $(du -sh "$DIR" 2>/dev/null | cut -f1)"
+          MODE="$1"; KEEP="$2"
+          PHPBIN="$(command -v php || true)"
+          [ -n "$PHPBIN" ] || { echo "=GAGAL php CLI tidak ada"; exit 1; }
+          echo "=AWAL $(du -sh /var/lib/pterodactyl/backups 2>/dev/null | cut -f1)"
+          cat > /tmp/rapibackup.php <<'PHP'
+          <?php
+          $mode = $argv[1] ?? 'laporan';
+          $keep = max(0, (int) ($argv[2] ?? 1));
+          $dir  = '/var/lib/pterodactyl/backups';
+          $env = [];
+          foreach (file('/var/www/pterodactyl/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+              if (!preg_match('/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$/', $line, $m)) { continue; }
+              $v = trim($m[2]); $len = strlen($v);
+              if ($len >= 2 && (($v[0] === '"' && $v[$len-1] === '"') || ($v[0] === "'" && $v[$len-1] === "'"))) { $v = substr($v, 1, -1); }
+              $env[$m[1]] = $v;
+          }
+          $host = $env['DB_HOST'] ?? '127.0.0.1';
+          if (in_array($host, ['localhost', '127.0.0.1'], true)) { $host = '127.0.0.1'; }
+          $map = [];
+          try {
+              $pdo = new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s', $host, $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel'),
+                             $env['DB_USERNAME'] ?? 'pterodactyl', $env['DB_PASSWORD'] ?? '',
+                             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+              foreach ($pdo->query('SELECT b.uuid, s.name AS server FROM backups b LEFT JOIN servers s ON s.id = b.server_id') as $r) {
+                  $map[$r['uuid']] = $r['server'] ?: 'server-terhapus';
+              }
+          } catch (Throwable $e) {
+              echo "=GAGAL DB: " . $e->getMessage() . "\n";
+              exit(2);
+          }
+          $files = array_merge(glob("$dir/*.tar.gz") ?: [], glob("$dir/*.tar") ?: []);
+          $groups = [];
+          foreach ($files as $f) {
+              $uuid = preg_replace('/\.tar(\.gz)?$/', '', basename($f));
+              $server = $map[$uuid] ?? 'di-luar-panel';
+              $groups[$server][] = ['f' => $f, 't' => filemtime($f), 's' => filesize($f)];
+          }
+          $del = 0; $bytes = 0; $shown = 0; $saved = 0;
+          foreach ($groups as $server => $items) {
+              usort($items, fn ($a, $b) => $b['t'] <=> $a['t']);
+              $n = count($items);
+              $saved += min($keep, $n);
+              $cut = 0; $mb = 0;
+              foreach ($items as $i => $it) {
+                  if ($i < $keep) { continue; }
+                  $cut++; $mb += $it['s'];
+                  if ($mode === 'hapus') { @unlink($it['f']); }
+              }
+              if ($cut > 0) {
+                  $del += $cut; $bytes += $mb;
+                  if ($shown < 9) {
+                      printf("=SERVER %s|hapus %d berkas|%d MB\n", $server, $cut, (int) round($mb / 1048576));
+                      $shown++;
+                  }
+              }
+          }
+          printf("=TOTAL %d berkas dihapus/ditandai, %d MB\n", $del, (int) round($bytes / 1048576));
+          printf("=TERSISA %d berkas backup dipertahankan\n", $saved);
+          PHP
+          "$PHPBIN" /tmp/rapibackup.php "$MODE" "$KEEP" || exit 1
+          echo "=AKHIR $(du -sh /var/lib/pterodactyl/backups 2>/dev/null | cut -f1)"
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =SIMPAN*|=RINGKAS*) echo "::notice title=Simpan::${line#=}";;
-              =AKAN*|=HAPUS*) echo "::notice title=Item::${line#=}";;
-              =MODE*|\=AWAL*|\=AKHIR*) echo "::notice title=Info::${line#=}";;
+              =SERVER*|=TOTAL*|=TERSISA*) echo "::notice title=Backup::${line#=}";;
+              =AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
