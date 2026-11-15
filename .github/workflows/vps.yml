@@ -1264,8 +1264,9 @@ jobs:
           }
           printf("=UBAH berhasil|baris=%d|email=%s|pola=%s****%s|panjang=%d\n", $rows, $em, substr($pw, 0, 4), substr($pw, -1), strlen($pw));
           PHP
-          docker cp /tmp/akun-ubah.php "$CID:/tmp/akun-ubah.php" >/dev/null
-          docker exec "$CID" php /tmp/akun-ubah.php "$MODE" 2>&1 | head -10
+          cpout="$(docker cp /tmp/akun-ubah.php "$CID:/tmp/akun-ubah.php" 2>&1)"; echo "=CP rc=$? ${cpout:0:160}"
+          out2="$(docker exec "$CID" php /tmp/akun-ubah.php "$MODE" 2>&1)"; echo "=EXEC rc=$?"
+          echo "$out2" | head -12 | sed 's/^/=OUT /'
           EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
           PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
           BASE="https://portofolio.xiero.biz.id"
@@ -1292,6 +1293,7 @@ jobs:
               =RENCANA*|=UBAH*) echo "::notice title=Akun::${line#=}";;
               =LOGIN*) echo "::notice title=Uji login::${line#=}";;
               =MODE*) echo "::notice title=Info::${line#=}";;
+              =CP*|=EXEC*|=OUT*) echo "::notice title=Debug::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
