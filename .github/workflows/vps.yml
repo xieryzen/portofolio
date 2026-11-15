@@ -31,6 +31,7 @@ on:
           - deploy-ssh
           - panel-start
           - logs
+          - web-setup
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -432,6 +433,116 @@ jobs:
             echo "::notice title=HTTP::http://$VPS_HOST:$port/ -> ${code:-000}"
           fi
           if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+
+  # ------------------------------------------------------------ web-setup ----
+  web-setup:
+    name: Pasang nginx (+ HTTPS) untuk domain
+    if: inputs.tugas == 'web-setup'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+      DOMAIN: portofolio.xiero.biz.id
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Tulis vhost nginx (+ certbot bila konfirmasi SSL)
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+          KONFIRMASI: ${{ inputs.konfirmasi }}
+        run: |
+          set -uo pipefail
+          ssl=0
+          [ "$KONFIRMASI" = "SSL" ] && ssl=1
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID $DOMAIN $ssl" <<'REMOTE' 2>&1
+          set -u
+          UUID="$1"; DOMAIN="$2"; SSL="$3"
+          CONF="/etc/nginx/sites-available/$DOMAIN"
+          BACKUP="/root/$DOMAIN-nginx-$(date +%Y%m%d-%H%M).bak"
+          NAME="$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -F "$UUID" | head -1)"
+          if [ -z "$NAME" ]; then echo "=GAGAL container server tidak ada"; exit 1; fi
+          PORT="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$NAME" 2>/dev/null | sed -n 's/^SERVER_PORT=//p' | head -1)"
+          echo "=PORT ${PORT:-?}"
+          if [ -z "$PORT" ]; then echo "=GAGAL port alokasi tidak diketahui"; exit 1; fi
+          if [ -f "$CONF" ]; then cp -a "$CONF" "$BACKUP" && echo "=OK backup $BACKUP"; fi
+          cat > "$CONF" <<NGINX
+          server {
+              listen 80;
+              listen [::]:80;
+              server_name $DOMAIN;
+
+              client_max_body_size 60M;
+
+              location / {
+                  proxy_pass http://127.0.0.1:$PORT;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host              \$host;
+                  proxy_set_header X-Real-IP         \$remote_addr;
+                  proxy_set_header X-Forwarded-For   \$proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto \$scheme;
+                  proxy_read_timeout 120s;
+                  proxy_buffering off;
+              }
+          }
+          NGINX
+          ln -sf "$CONF" "/etc/nginx/sites-enabled/$DOMAIN"
+          if nginx -t 2>/tmp/ngx.err; then
+            systemctl reload nginx && echo "=OK nginx reload (proxy ke 127.0.0.1:$PORT)"
+          else
+            echo "=GAGAL nginx -t: $(tail -2 /tmp/ngx.err | tr '\n' ' ')"
+            rm -f "/etc/nginx/sites-enabled/$DOMAIN"
+            [ -f "$BACKUP" ] && cp -a "$BACKUP" "$CONF"
+            nginx -t >/dev/null 2>&1 && systemctl reload nginx
+            exit 1
+          fi
+          ENVF="/var/lib/pterodactyl/volumes/$UUID/.env"
+          if [ -f "$ENVF" ]; then
+            if grep -q '^TRUST_PROXY=' "$ENVF"; then
+              sed -i 's/^TRUST_PROXY=.*/TRUST_PROXY=true/' "$ENVF"
+            else
+              echo 'TRUST_PROXY=true' >> "$ENVF"
+            fi
+            echo "=OK .env TRUST_PROXY=true"
+          else
+            echo "=INFO .env belum ada (dibuat saat Start pertama)"
+          fi
+          if [ "$SSL" = "1" ]; then
+            if command -v certbot >/dev/null 2>&1; then
+              if certbot --nginx -d "$DOMAIN" --redirect --agree-tos \
+                   --register-unsafely-without-email --non-interactive >/tmp/certbot.log 2>&1; then
+                echo "=OK sertifikat HTTPS terpasang"
+              else
+                echo "=GAGAL certbot: $(tail -3 /tmp/certbot.log | tr '\n' ' ')"
+              fi
+            else
+              echo "=INFO certbot tidak terpasang (jalankan: apt install -y certbot python3-certbot-nginx)"
+            fi
+          else
+            echo "=INFO certbot dilewati (jalankan ulang dengan konfirmasi SSL)"
+          fi
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Web::${line#=}" ;;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
 
   # -------------------------------------------------------------- bersih ----
   bersih:
