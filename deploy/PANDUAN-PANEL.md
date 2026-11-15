@@ -4,7 +4,7 @@ Panduan ini khusus untuk server **Xiero Portofolio** di panel `panel.hexnitystor
 (node `basic-1.hexnitystore.com`), dengan domain publik
 **`https://portofolio.xiero.biz.id`**.
 
-Aplikasi berjalan sebagai **PHP built-in server** (`bash start.sh`) + **SQLite** di dalam
+Aplikasi berjalan sebagai **PHP built-in server** (`sh start.sh`) + **SQLite** di dalam
 container, jadi tidak butuh Nginx/PHP-FPM **di dalam** container. Nginx di VPS hanya dipakai
 sebagai *reverse proxy* dari domain ke port alokasi server.
 
@@ -23,7 +23,7 @@ git tag vX.Y.Z ──► GitHub Actions "Rilis" ──► portofolio-vX.Y.Z.zip
                                                     │
                                    /home/container  (extract, jangan hapus storage/)
                                                     │
-                              bash start.sh  ──►  0.0.0.0:$SERVER_PORT
+                              sh start.sh  ──►  0.0.0.0:$SERVER_PORT
                                                     │
              Nginx VPS: portofolio.xiero.biz.id  ──►  127.0.0.1:$PORT
 ```
@@ -43,7 +43,7 @@ Paket rilis yang dipakai selalu dari halaman **Releases** repo
    dipakai reverse proxy.
 4. Pastikan limit minimal: **RAM 256 MB**, **disk 512 MB** (disarankan 1 GB agar cukup untuk
    gambar + file rilis + backup).
-5. Pastikan server punya **Description** dan **Startup Command** = `bash start.sh`.
+5. Pastikan server punya **Description** dan **Startup Command** = `sh start.sh`.
 
 ---
 
@@ -299,7 +299,7 @@ GitHub, yang punya akses internet penuh:
 
 | Gejala | Penyebab umum | Solusi |
 | --- | --- | --- |
-| Container langsung berhenti | `start.sh` tidak ada / salah folder | Pastikan `start.sh` di `/home/container`, startup `bash start.sh` |
+| Container langsung berhenti | `start.sh` tidak ada / salah folder | Pastikan `start.sh` di `/home/container`, startup `sh start.sh` |
 | `502 Bad Gateway` dari domain | Port proxy salah / server mati | Cek port alokasi & status server di panel |
 | Halaman putih / 500 | Permission `storage/` | Console: `chmod -R 775 storage` lalu restart |
 | Upload gambar gagal | Batas PHP terlalu kecil | Naikkan `MAX_UPLOAD_MB` / `RELEASE_MAX_MB`, restart |

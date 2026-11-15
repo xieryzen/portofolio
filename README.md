@@ -88,7 +88,7 @@ cp .env.example .env
 
 php -S 0.0.0.0:8080 -t public router.php
 # atau
-bash start.sh
+sh start.sh
 ```
 
 Buka `http://localhost:8080`.
@@ -184,7 +184,7 @@ di dalam container. Semua permintaan diarahkan lewat `router.php`.
 ### 1. Import egg
 1. Buka **Admin Area → Nests → Import Egg**.
 2. Pilih file `deploy/pterodactyl-egg.json` yang ada di repo ini.
-3. Simpan (egg menggunakan image `php:8.3-cli`, startup command `bash start.sh`).
+3. Simpan (egg menggunakan image `php:8.3-cli`, startup command `sh start.sh`).
 
 ### 2. Buat server
 - Pilih egg **"PHP 8.3 — Portfolio CMS"**.
