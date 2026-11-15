@@ -118,4 +118,86 @@ final class Image
             'original_bytes' => $originalBytes,
         ];
     }
+
+    /**
+     * Ubah gambar apa pun menjadi kanvas persegi (1:1) dengan latar transparan.
+     *
+     * Dipakai untuk logo header & favicon supaya ukurannya selalu konsisten
+     * berapa pun rasio gambar yang diunggah. Gambar tidak dipotong — diskalakan
+     * agar muat penuh lalu diletakkan di tengah kanvas.
+     *
+     * @return array{file: string, width: int, height: int, bytes: int}|null
+     */
+    public static function toSquare(string $path, int $size = 512): ?array
+    {
+        if (!self::supported() || !is_file($path)) {
+            return null;
+        }
+
+        $contents = @file_get_contents($path);
+        if ($contents === false) {
+            return null;
+        }
+
+        $source = @imagecreatefromstring($contents);
+        if (!$source instanceof \GdImage) {
+            return null;
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+
+        if ($width < 1 || $height < 1) {
+            imagedestroy($source);
+
+            return null;
+        }
+
+        $size = max(64, min(2048, $size));
+        $canvas = imagecreatetruecolor($size, $size);
+
+        if (!$canvas instanceof \GdImage) {
+            imagedestroy($source);
+
+            return null;
+        }
+
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefilledrectangle($canvas, 0, 0, $size, $size, (int) $transparent);
+        imagealphablending($canvas, true);
+
+        $scale = min($size / $width, $size / $height);
+        $targetWidth = (int) max(1, round($width * $scale));
+        $targetHeight = (int) max(1, round($height * $scale));
+        $offsetX = (int) floor(($size - $targetWidth) / 2);
+        $offsetY = (int) floor(($size - $targetHeight) / 2);
+
+        imagecopyresampled($canvas, $source, $offsetX, $offsetY, 0, 0, $targetWidth, $targetHeight, $width, $height);
+
+        $target = (string) preg_replace('~\.[a-z0-9]+$~i', '', $path) . '-sq.png';
+
+        if ($target === $path) {
+            $target = $path . '-sq.png';
+        }
+
+        $written = @imagepng($canvas, $target, 6);
+
+        imagedestroy($canvas);
+        imagedestroy($source);
+
+        if (!$written || !is_file($target)) {
+            return null;
+        }
+
+        @chmod($target, 0644);
+
+        return [
+            'file' => basename($target),
+            'width' => $size,
+            'height' => $size,
+            'bytes' => (int) (filesize($target) ?: 0),
+        ];
+    }
 }

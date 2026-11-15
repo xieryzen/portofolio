@@ -58,12 +58,14 @@ $value = static fn (string $key, string $default = ''): string => (string) \old(
                 <p class="small muted" style="margin-top:0">
                     Unggah gambar JPG/PNG/WEBP/GIF. Logo tampil di header (menggantikan foto profil),
                     favicon jadi ikon tab browser, dan banner menjadi latar bagian atas beranda.
+                    <strong>Logo &amp; favicon otomatis dijadikan persegi 1:1</strong> (512&times;512, latar transparan)
+                    agar ukurannya selalu konsisten berapa pun rasio gambar aslinya.
                 </p>
                 <div class="brand-grid">
                     <?php
                     $brandItems = [
-                        ['type' => 'logo', 'key' => 'logo_file', 'title' => 'Logo header', 'ratio' => ''],
-                        ['type' => 'favicon', 'key' => 'favicon_file', 'title' => 'Favicon', 'ratio' => ''],
+                        ['type' => 'logo', 'key' => 'logo_file', 'title' => 'Logo header', 'ratio' => 'is-square'],
+                        ['type' => 'favicon', 'key' => 'favicon_file', 'title' => 'Favicon', 'ratio' => 'is-square'],
                         ['type' => 'banner', 'key' => 'banner_file', 'title' => 'Banner beranda', 'ratio' => 'is-banner'],
                     ];
                     foreach ($brandItems as $item):
