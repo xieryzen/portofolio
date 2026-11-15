@@ -32,6 +32,7 @@ on:
           - panel-start
           - logs
           - web-setup
+          - fix-startup
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -545,6 +546,83 @@ jobs:
           while IFS= read -r line; do
             case "$line" in
               =*) n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Web::${line#=}" ;;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # ---------------------------------------------------------- fix-startup ----
+  fix-startup:
+    name: Perbaiki startup command (DB) & restart Wings
+    if: inputs.tugas == 'fix-startup'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Ubah startup command & sinkronkan Wings
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          UUID="$1"
+          if [ ! -f /var/www/pterodactyl/.env ]; then echo "=GAGAL .env panel tidak ada"; exit 1; fi
+          PHPBIN="$(command -v php || command -v php8.3 || command -v php8.2 || true)"
+          if [ -z "$PHPBIN" ]; then echo "=GAGAL php CLI tidak ada"; exit 1; fi
+          echo "=PHPBIN $PHPBIN"
+          cat > /tmp/fix-startup.php <<'PHP'
+          <?php
+          $env = parse_ini_file('/var/www/pterodactyl/.env');
+          $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $env['DB_HOST'] ?? '127.0.0.1', $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel');
+          try {
+              $pdo = new PDO($dsn, $env['DB_USERNAME'] ?? 'pterodactyl', $env['DB_PASSWORD'] ?? '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          } catch (Throwable $e) {
+              echo "=GAGAL koneksi DB: " . $e->getMessage() . "\n";
+              exit(2);
+          }
+          $uuid = $argv[1];
+          $stmt = $pdo->prepare('SELECT id, startup, image FROM servers WHERE uuid = ?');
+          $stmt->execute([$uuid]);
+          $row = $stmt->fetch(PDO::FETCH_ASSOC);
+          if (!$row) { echo "=GAGAL server tidak ada di DB\n"; exit(3); }
+          echo "=SEBELUM " . $row['startup'] . "\n";
+          echo "=IMAGE " . $row['image'] . "\n";
+          file_put_contents('/root/portofolio-startup-backup.txt', date('c') . ' ' . json_encode($row) . "\n", FILE_APPEND);
+          $upd = $pdo->prepare('UPDATE servers SET startup = ? WHERE id = ?');
+          $upd->execute(['sh start.sh', $row['id']]);
+          $stmt->execute([$uuid]);
+          $row2 = $stmt->fetch(PDO::FETCH_ASSOC);
+          echo "=SESUDAH " . $row2['startup'] . "\n";
+          PHP
+          "$PHPBIN" /tmp/fix-startup.php "$UUID" || exit 1
+          systemctl restart wings
+          for i in 1 2 3 4 5 6 7 8; do sleep 3; [ "$(systemctl is-active wings)" = "active" ] && break; done
+          echo "=WINGS $(systemctl is-active wings)"
+          cd /var/www/pterodactyl || exit 1
+          "$PHPBIN" artisan p:server:bulk-power --help 2>&1 | sed -n '3,8p' | sed 's/^/=HELP /'
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Fix::${line#=}" ;;
             esac
           done <<< "$out" || true
           if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
