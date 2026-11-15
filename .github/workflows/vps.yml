@@ -1535,7 +1535,7 @@ jobs:
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =UKURANASAL*|=BERKAS*|=BERSIH*|=UNGGAH*|=TOKEN*|=DB*|=BANNERKELAS*) echo "::notice title=Identitas::${line#=}";;
+              =UKURANASAL*|=DB*|=BERKAS*|=BANNERKELAS*|=BERSIH*) echo "::notice title=Identitas::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
