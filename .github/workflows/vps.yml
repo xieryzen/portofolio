@@ -35,6 +35,7 @@ on:
           - fix-startup
           - start-server
           - smoke
+          - bkp
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -748,6 +749,54 @@ jobs:
           echo "::notice title=Redirect::HTTP ${code:-000}"
           case "${code:-000}" in 301|302|308) exit 0 ;; *) exit 1 ;; esac
 
+  # ------------------------------------------------------------------ bkp ----
+  bkp:
+    name: Daftar backup panel (baca saja)
+    if: inputs.tugas == 'bkp'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Daftar folder backup
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR=/var/lib/pterodactyl/backups
+          if [ ! -d "$DIR" ]; then echo "=GAGAL folder backup tidak ada"; exit 1; fi
+          echo "=TOTAL $(du -sh "$DIR" 2>/dev/null | cut -f1)"
+          for d in "$DIR"/*/; do
+            [ -d "$d" ] || continue
+            echo "=BKP $(du -sh "$d" 2>/dev/null | cut -f1)|$(date -r "$d" +%Y-%m-%d)|$(basename "$d")"
+          done | sort -t'|' -k2
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =BKP*) n=$((n+1)); [ "$n" -le 10 ] && echo "::notice title=Backup::${line#=BKP }" ;;
+              =TOTAL*) echo "::notice title=Total::${line#=TOTAL }" ;;
+            esac
+          done <<< "$out" || true
+          exit 0
+
   # -------------------------------------------------------------- bersih ----
   bersih:
     name: Bersih-bersih VPS
@@ -797,7 +846,10 @@ jobs:
                 n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Cleanup::$(echo "$line" | sed 's/^[0-9-]* [0-9:]* //')" ;;
             esac
           done <<< "$out"
-          echo "$out" | grep -q "GAGAL" && echo "::warning title=Cleanup::ada langkah yang gagal, lihat log"
+          if echo "$out" | grep -q "GAGAL"; then
+            echo "::warning title=Cleanup::ada langkah yang gagal, lihat log"
+          fi
+          exit 0
 
   # --------------------------------------------------------- deploy-panel ----
   deploy:
