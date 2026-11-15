@@ -51,39 +51,68 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      HASIL: ${{ github.workspace }}/hasil-cek.txt
     steps:
-      - name: DNS
-        run: |
-          set -uo pipefail
-          for host in panel.hexnitystore.com portofolio.xiero.biz.id; do
-            printf '%s -> %s\n' "$host" "$(getent hosts "$host" | awk '{print $1}' | head -1)"
-          done
-          printf 'VPS_HOST -> %s\n' "$(getent hosts "$VPS_HOST" | awk '{print $1}' | head -1)"
+      # Semua langkah memakai continue-on-error agar seluruh titik diuji,
+      # lalu langkah terakhir gagal bila ada satu saja yang GAGAL.
+      # Status tiap langkah bisa dibaca tanpa log:
+      #   gh api repos/<owner>/<repo>/actions/runs/<id>/jobs
+      - name: Mulai
+        run: ': > "$HASIL"'
 
-      - name: Port TCP
+      - name: DNS ter-resolve
+        continue-on-error: true
         run: |
-          set -uo pipefail
-          for port in 22 80 443; do
-            if timeout 6 bash -c "exec 3<>/dev/tcp/$VPS_HOST/$port" 2>/dev/null; then
-              echo "port $port: terbuka"
-            else
-              echo "port $port: tertutup / timeout"
-            fi
+          ok=1
+          for host in "$VPS_HOST" panel.hexnitystore.com portofolio.xiero.biz.id; do
+            ip="$(getent hosts "$host" | awk '{print $1}' | head -1)"
+            echo "$host -> ${ip:-GAGAL}"
+            [ -n "$ip" ] || ok=0
           done
+          if [ "$ok" = 1 ]; then echo "OK    dns" >> "$HASIL"; else echo "GAGAL dns" >> "$HASIL"; exit 1; fi
+
+      - name: Port 22
+        continue-on-error: true
+        run: |
+          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22'; then echo "OK    port-22" >> "$HASIL"; else echo "GAGAL port-22" >> "$HASIL"; exit 1; fi
+
+      - name: Port 80
+        continue-on-error: true
+        run: |
+          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/80'; then echo "OK    port-80" >> "$HASIL"; else echo "GAGAL port-80" >> "$HASIL"; exit 1; fi
+
+      - name: Port 443
+        continue-on-error: true
+        run: |
+          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/443'; then echo "OK    port-443" >> "$HASIL"; else echo "GAGAL port-443" >> "$HASIL"; exit 1; fi
 
       - name: Banner SSH
+        continue-on-error: true
         run: |
-          set -uo pipefail
-          timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' 2>/dev/null \
-            | cat -v || echo "(tidak ada banner — port 22 tertutup atau bukan SSH)"
+          banner="$(timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' 2>/dev/null | tr -d '\000' || true)"
+          echo "banner: ${banner:-<kosong>}"
+          case "$banner" in SSH-*) echo "OK    banner-ssh" >> "$HASIL" ;; *) echo "GAGAL banner-ssh" >> "$HASIL"; exit 1 ;; esac
 
-      - name: HTTP panel & situs
+      - name: Panel HTTPS
+        continue-on-error: true
         run: |
-          set -uo pipefail
-          for url in https://panel.hexnitystore.com https://portofolio.xiero.biz.id; do
-            code=$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "$url" 2>/dev/null || echo 000)
-            echo "$url -> HTTP $code"
-          done
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://panel.hexnitystore.com || echo 000)"
+          echo "panel -> HTTP $code"
+          case "$code" in 2*|3*) echo "OK    panel" >> "$HASIL" ;; *) echo "GAGAL panel" >> "$HASIL"; exit 1 ;; esac
+
+      - name: Situs portofolio
+        continue-on-error: true
+        run: |
+          code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id || echo 000)"
+          echo "situs -> HTTP $code"
+          case "$code" in 2*|3*) echo "OK    situs" >> "$HASIL" ;; *) echo "GAGAL situs" >> "$HASIL"; exit 1 ;; esac
+
+      - name: Ringkasan
+        run: |
+          echo "=== Ringkasan uji jangkauan ==="
+          cat "$HASIL"
+          echo "=== akhir ==="
+          if grep -q '^GAGAL' "$HASIL"; then exit 1; fi
 
   bersih:
     name: Bersih-bersih VPS
