@@ -285,6 +285,8 @@ Kalau mesin yang dipakai tidak bisa menjangkau IP VPS, pakai workflow **VPS**
 | `info` | Info server: OS, disk, Docker/Wings, folder volume, container, nginx, sertifikat (baca saja) | SSH |
 | `deploy-ssh` | Unduh ZIP rilis → ekstrak ke volume server panel → chown → restart container (wajib konfirmasi `DEPLOY`) | SSH |
 | `panel-start` | Menyalakan server lewat `php artisan p:server:bulk-power start <uuid>` lalu menampilkan container + port alokasi | SSH |
+| `logs` | Status/exit code container, image, env port, isi volume, 25 baris terakhir `docker logs` | SSH |
+| `web-setup` | Menulis vhost nginx untuk domain (proxy ke port alokasi, backup otomatis, rollback bila `nginx -t` gagal); tambahkan konfirmasi `SSL` untuk certbot | SSH |
 | `bersih-laporan` | Menjalankan `cleanup-vps.sh` mode laporan | SSH |
 | `bersih-hapus` | Menjalankan `cleanup-vps.sh --apply` (wajib isi konfirmasi `BERSIHKAN`) | SSH |
 | `deploy-panel` | Deploy rilis lewat Client API (`panel-deploy.sh`) | API key panel |
