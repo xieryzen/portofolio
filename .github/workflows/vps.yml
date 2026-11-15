@@ -862,6 +862,12 @@ jobs:
           if [ ! -d "$DIR" ]; then echo "=GAGAL folder backup tidak ada"; exit 1; fi
           echo "=MODE $MODE (menyimpan $KEEP berkas terbaru, folder tidak disentuh)"
           echo "=AWAL $(du -sh "$DIR" 2>/dev/null | cut -f1)"
+          # Tampilkan dulu berkas terbaru yang dipertahankan.
+          find "$DIR" -maxdepth 1 -type f -printf '%T@|%s|%f\n' 2>/dev/null | sort -t'|' -k1 -rn \
+            | head -n "$KEEP" | while IFS='|' read -r ts size name; do
+                echo "=SIMPAN $(( size / 1048576 ))MB|$name"
+              done
+          echo "=RINGKAS $(find "$DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) berkas, total $(find "$DIR" -maxdepth 1 -type f -printf '%s\n' 2>/dev/null | awk '{s+=$1} END {printf "%d", s/1048576}')MB"
           # Berkas (bukan folder) diurutkan dari yang terbaru; mulai nomor KEEP+1 dihapus.
           find "$DIR" -maxdepth 1 -type f -printf '%T@|%s|%p\n' 2>/dev/null | sort -t'|' -k1 -rn \
             | tail -n +$((KEEP + 1)) | while IFS='|' read -r ts size path; do
@@ -879,8 +885,9 @@ jobs:
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
+              =SIMPAN*|=RINGKAS*) echo "::notice title=Simpan::${line#=}";;
               =AKAN*|=HAPUS*) echo "::notice title=Item::${line#=}";;
-              =MODE*|=AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
+              =MODE*|\=AWAL*|\=AKHIR*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
