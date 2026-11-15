@@ -1,0 +1,171 @@
+name: VPS
+
+# Menjalankan tugas di VPS dari infrastruktur GitHub (punya akses internet penuh).
+# Berguna saat mesin lokal/agen tidak bisa menjangkau IP VPS.
+#
+# Sekali saja, tambahkan secrets di: Settings → Secrets and variables → Actions
+#   VPS_HOST          (opsional, default 38.47.92.214)
+#   VPS_USER          (opsional, default root)
+#   VPS_SSH_KEY       kunci privat SSH (disarankan) ATAU
+#   VPS_SSH_PASSWORD  kata sandi SSH (fallback)
+#   PTERO_SERVER_ID   UUID server panel, untuk tugas deploy-panel
+#   PTERO_API_KEY     API key panel (Client API, read & write)
+#
+# Jangan pernah menaruh kredensial di file repo atau di chat.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tugas:
+        description: 'Tugas yang dijalankan'
+        required: true
+        default: cek
+        type: choice
+        options:
+          - cek
+          - bersih-laporan
+          - bersih-hapus
+          - deploy-panel
+      konfirmasi:
+        description: 'Ketik BERSIHKAN untuk tugas bersih-hapus'
+        required: false
+        default: ''
+        type: string
+      tag:
+        description: 'Tag rilis untuk deploy-panel (kosong = terbaru)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vps
+  cancel-in-progress: false
+
+jobs:
+  cek:
+    name: Cek konektivitas VPS
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+    steps:
+      - name: DNS
+        run: |
+          set -uo pipefail
+          for host in panel.hexnitystore.com portofolio.xiero.biz.id; do
+            printf '%s -> %s\n' "$host" "$(getent hosts "$host" | awk '{print $1}' | head -1)"
+          done
+          printf 'VPS_HOST -> %s\n' "$(getent hosts "$VPS_HOST" | awk '{print $1}' | head -1)"
+
+      - name: Port TCP
+        run: |
+          set -uo pipefail
+          for port in 22 80 443; do
+            if timeout 6 bash -c "exec 3<>/dev/tcp/$VPS_HOST/$port" 2>/dev/null; then
+              echo "port $port: terbuka"
+            else
+              echo "port $port: tertutup / timeout"
+            fi
+          done
+
+      - name: Banner SSH
+        run: |
+          set -uo pipefail
+          timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' 2>/dev/null \
+            | cat -v || echo "(tidak ada banner — port 22 tertutup atau bukan SSH)"
+
+      - name: HTTP panel & situs
+        run: |
+          set -uo pipefail
+          for url in https://panel.hexnitystore.com https://portofolio.xiero.biz.id; do
+            code=$(curl -sS -o /dev/null -m 20 -w '%{http_code}' "$url" 2>/dev/null || echo 000)
+            echo "$url -> HTTP $code"
+          done
+
+  bersih:
+    name: Bersih-bersih VPS
+    if: inputs.tugas == 'bersih-laporan' || inputs.tugas == 'bersih-hapus'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validasi konfirmasi
+        if: inputs.tugas == 'bersih-hapus' && inputs.konfirmasi != 'BERSIHKAN'
+        run: |
+          echo "::error::Tugas bersih-hapus butuh isian konfirmasi = BERSIHKAN"
+          exit 1
+
+      - name: Siapkan SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -T 10 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          if [ -n "${VPS_SSH_KEY:-}" ]; then
+            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy
+            chmod 600 ~/.ssh/id_deploy
+            echo "SSH_AUTH=key" >> "$GITHUB_ENV"
+          elif [ -n "${VPS_SSH_PASSWORD:-}" ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq sshpass >/dev/null
+            echo "SSH_AUTH=password" >> "$GITHUB_ENV"
+          else
+            echo "::error::Tambahkan secret VPS_SSH_KEY (disarankan) atau VPS_SSH_PASSWORD."
+            exit 1
+          fi
+
+      - name: Jalankan cleanup-vps.sh
+        env:
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+          MODE: ${{ inputs.tugas }}
+        run: |
+          set -euo pipefail
+          args=()
+          [ "$MODE" = "bersih-hapus" ] && args+=("--apply")
+          common=(-o StrictHostKeyChecking=yes -o ConnectTimeout=20)
+          if [ "${SSH_AUTH}" = "key" ]; then
+            full=(ssh -i ~/.ssh/id_deploy "${common[@]}" -o BatchMode=yes)
+          else
+            full=(sshpass -p "$VPS_SSH_PASSWORD" ssh "${common[@]}" -o BatchMode=no -o PreferredAuthentications=password -o PubkeyAuthentication=no)
+          fi
+          # Root langsung; user lain pakai sudo non-interaktif.
+          if [ "${VPS_USER}" = "root" ]; then
+            remote="bash -s -- ${args[*]}"
+          else
+            remote="sudo -n bash -s -- ${args[*]}"
+          fi
+          # Skrip audited dari repo dijalankan langsung di VPS, tanpa menulis file.
+          "${full[@]}" "$VPS_USER@$VPS_HOST" "$remote" < deploy/cleanup-vps.sh
+
+  deploy:
+    name: Deploy lewat API panel
+    if: inputs.tugas == 'deploy-panel'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Jalankan panel-deploy.sh
+        env:
+          PTERO_PANEL_URL: ${{ secrets.PTERO_PANEL_URL || 'https://panel.hexnitystore.com' }}
+          PTERO_SERVER_ID: ${{ secrets.PTERO_SERVER_ID }}
+          PTERO_API_KEY: ${{ secrets.PTERO_API_KEY }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PTERO_SERVER_ID:-}" ] || [ -z "${PTERO_API_KEY:-}" ]; then
+            echo "::error::Tambahkan secret PTERO_SERVER_ID dan PTERO_API_KEY."
+            exit 1
+          fi
+          args=()
+          [ -n "${TAG:-}" ] && args+=("--tag" "$TAG")
+          bash deploy/panel-deploy.sh "${args[@]}"
