@@ -1414,13 +1414,25 @@ jobs:
           if [ -n "$AV" ]; then
             echo "=MEDIA $(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$AV")"
           fi
-          rm -f "$JAR" /tmp/uji.png /tmp/resp.html
+          # Unggah cover (banner) + CV PDF.
+          CODE2="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/admin/profile/image" \
+            -F "_token=$T2" -F "type=cover" -F "image=@/tmp/uji.png;type=image/png")"
+          printf '%%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Root 1 0 R>>\n%%%%EOF\n' > /tmp/uji.pdf
+          CODE3="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/admin/profile/cv" \
+            -F "_token=$T2" -F "cv=@/tmp/uji.pdf;type=application/pdf")"
+          echo "=COVER http=$CODE2 (302=sukses)"
+          echo "=CVUPLOAD http=$CODE3 (302=sukses)|/cv=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/cv")"
+          HOME_HTML="$(curl -s "$BASE/")"
+          echo "=HOME mxn-avatar=$(printf '%s' "$HOME_HTML" | grep -o 'media/[A-Za-z0-9._-]*' | head -3 | tr '\n' ' ')"
+          echo "=DIRBANDING $(docker inspect -f '{{range .Mounts}}{{.Source}}->{{.Destination}} {{end}}' "$CID" 2>/dev/null | cut -c1-200)"
+          echo "=CMD1 $(docker exec "$CID" sh -c 'tr "\\0" " " < /proc/1/cmdline' 2>&1 | cut -c1-400)"
+          rm -f "$JAR" /tmp/uji.png /tmp/uji.pdf /tmp/resp.html
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*) echo "::notice title=Uji::${line#=}";;
+              =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*|=COVER*|=CVUPLOAD*|=HOME*|=DIRBANDING*|=CMD1*) echo "::notice title=Uji::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
