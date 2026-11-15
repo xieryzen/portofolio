@@ -42,6 +42,7 @@ on:
           - akun
           - akun-ubah
           - diagnosa
+          - uji-upload
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1354,6 +1355,72 @@ jobs:
           while IFS= read -r line; do
             case "$line" in
               =INI*|=EXT*|=IZIN*|=ENVLIMIT*|=JUMLAH*|=OWNER*|=LOG*|=TAIL*|=PROSES*|=DB*|=BERKAS*) echo "::notice title=Diagnosa::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          exit 0
+
+  # ---------------------------------------------------------- uji-upload ----
+  uji-upload:
+    name: Uji unggah gambar end-to-end
+    if: inputs.tugas == 'uji-upload'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Login, unggah gambar uji, periksa hasil
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR="/var/lib/pterodactyl/volumes/2ed93f7b-4009-4eaa-814c-577dee40dd3b"
+          CID="$(docker ps -q --filter name=2ed93f7b 2>/dev/null | head -n 1)"
+          echo "=HOST uploads=$(ls -1 "$DIR/storage/uploads" 2>/dev/null | wc -l) dokumen=$(ls -1 "$DIR/storage/documents" 2>/dev/null | wc -l)"
+          EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          BASE="https://portofolio.xiero.biz.id"
+          printf 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAHUlEQVR42u3OMQEAAAgDoC251a3gLwSgSZMmTZr0zwEBAQH/0kR9AAAAAElFTkSuQmCC' | base64 -d > /tmp/uji.png
+          echo "=PNG $(stat -c %s /tmp/uji.png) byte"
+          JAR="$(mktemp)"
+          T1="$(curl -fsS -c "$JAR" "$BASE/login" | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/login" \
+            --data-urlencode "_token=$T1" --data-urlencode "email=$EM" --data-urlencode "password=$PW"
+          PAGE="$(curl -s -b "$JAR" -c "$JAR" "$BASE/admin/profile")"
+          echo "=HALAMAN profil=${#PAGE} byte"
+          T2="$(printf '%s' "$PAGE" | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          CODE="$(curl -s -o /tmp/resp.html -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/admin/profile/image" \
+            -F "_token=$T2" -F "type=avatar" -F "image=@/tmp/uji.png;type=image/png")"
+          echo "=UPLOAD http=$CODE"
+          FLASH="$(curl -s -b "$JAR" "$BASE/admin/profile" | tr '\n' ' ' | grep -oE '(alert|flash)[^<]{0,20}<[^>]*>[^<]{3,140}' | head -n 2 | tr '\n' ' | ')"
+          echo "=FLASH ${FLASH:-<tidak terdeteksi>}"
+          echo "=DB $(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $r=$d->query("SELECT avatar, cover FROM profiles LIMIT 1")->fetch(PDO::FETCH_ASSOC); echo "avatar=".($r["avatar"]?:"<kosong>")." cover=".($r["cover"]?:"<kosong>");' 2>&1 | head -1)"
+          AV="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); echo (string) $d->query("SELECT avatar FROM profiles LIMIT 1")->fetchColumn();' 2>&1 | head -1)"
+          if [ -n "$AV" ]; then
+            echo "=MEDIA $(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$AV")"
+          fi
+          rm -f "$JAR" /tmp/uji.png /tmp/resp.html
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*) echo "::notice title=Uji::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
