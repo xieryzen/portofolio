@@ -38,6 +38,7 @@ on:
           - bkp
           - bkp-hapus
           - bkp-luar-hapus
+          - kredensial
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1022,6 +1023,82 @@ jobs:
             case "$line" in
               =FILE*|=TOTAL*|=CATATAN*) echo "::notice title=Arsip::${line#=}";;
               =AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # ----------------------------------------------------------- kredensial ----
+  kredensial:
+    name: Info kredensial login owner
+    if: inputs.tugas == 'kredensial'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Bacakan OWNER_EMAIL / pola password (password utuh tidak dicetak)
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR="/var/lib/pterodactyl/volumes/2ed93f7b-4009-4eaa-814c-577dee40dd3b"
+          [ -d "$DIR" ] || DIR="$(ls -d /var/lib/pterodactyl/volumes/*/ 2>/dev/null | head -n 1)"
+          echo "=DIR $DIR"
+          if [ ! -f "$DIR/.env" ]; then echo "=GAGAL .env tidak ada"; exit 1; fi
+          EMAIL="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r')"
+          PASS="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r')"
+          echo "=EMAIL ${EMAIL:-<kosong>}"
+          echo "=PWPANJANG ${#PASS}"
+          echo "=PWPOLA $(echo "$PASS" | sed -E 's/^(....).*([^ ])$/\1****\2/')"
+          DBN="$DIR/storage/database.sqlite"
+          if [ -f "$DBN" ]; then
+            PHPBIN="$(command -v php || true)"
+            if [ -n "$PHPBIN" ]; then
+              "$PHPBIN" -r '
+                $db = new PDO("sqlite:" . $argv[1]);
+                $pass = $argv[2];
+                foreach ($db->query("SELECT email, role, is_active FROM users") as $u) {
+                    $ok = "?";
+                    $q = $db->prepare("SELECT password_hash FROM users WHERE email = ?");
+                    $q->execute([$u["email"]]);
+                    $h = $q->fetchColumn();
+                    if (is_string($h)) { $ok = password_verify($pass, $h) ? "cocok .env" : "beda dari .env"; }
+                    printf("=AKUN %s|role=%s|aktif=%s|%s\n", $u["email"], $u["role"], $u["is_active"], $ok);
+                }
+              ' "$DBN" "$PASS" 2>&1 | head -6
+            fi
+          else
+            echo "=CATATAN database.sqlite tidak ditemukan"
+          fi
+          mkdir -p /root
+          printf "EMAIL: %s\nPASSWORD: %s\nSumber: %s/.env\n" "$EMAIL" "$PASS" "$DIR" > /root/kredensial-portofolio.txt
+          chmod 600 /root/kredensial-portofolio.txt
+          echo "=BERKAS /root/kredensial-portofolio.txt (chmod 600)"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =EMAIL*|=PWPANJANG*|=PWPOLA*|=DIR*) echo "::notice title=Kredensial::${line#=}";;
+              =AKUN*) echo "::notice title=Akun::${line#=}";;
+              =BERKAS*|=CATATAN*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
