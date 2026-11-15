@@ -57,12 +57,19 @@ jobs:
     steps:
       - name: Resolusi host + domain
         run: |
-          set -euo pipefail
+          ok=1
           for host in "$VPS_HOST" panel.hexnitystore.com portofolio.xiero.biz.id; do
             ip="$(getent hosts "$host" | awk '{print $1}' | head -1)"
-            echo "$host -> ${ip:-GAGAL}"
-            [ -n "$ip" ]
+            if [ -n "$ip" ]; then
+              echo "$host -> $ip"
+              echo "::notice title=DNS::$host -> $ip"
+            else
+              echo "$host -> GAGAL"
+              echo "::error title=DNS gagal::$host tidak ter-resolve"
+              ok=0
+            fi
           done
+          [ "$ok" = 1 ]
 
   cek-port22:
     env:
@@ -112,17 +119,25 @@ jobs:
     steps:
       - name: Panel HTTPS
         run: |
-          set -euo pipefail
           code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://panel.hexnitystore.com || echo 000)"
           echo "panel -> HTTP $code"
-          case "$code" in 2*|3*) exit 0 ;; *) exit 1 ;; esac
+          if [ "${code:0:1}" = "2" ] || [ "${code:0:1}" = "3" ]; then
+            echo "::notice title=Panel::panel HTTP $code"
+          else
+            echo "::error title=Panel gagal::panel HTTP $code"
+            exit 1
+          fi
 
       - name: Situs portofolio
         run: |
-          set -euo pipefail
           code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id || echo 000)"
           echo "situs -> HTTP $code"
-          case "$code" in 2*|3*) exit 0 ;; *) exit 1 ;; esac
+          if [ "${code:0:1}" = "2" ] || [ "${code:0:1}" = "3" ]; then
+            echo "::notice title=Situs::situs HTTP $code"
+          else
+            echo "::error title=Situs gagal::situs HTTP $code"
+            exit 1
+          fi
 
   bersih:
     name: Bersih-bersih VPS
