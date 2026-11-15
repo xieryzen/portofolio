@@ -166,6 +166,12 @@ pakai salah satu cara berikut.
 Aplikasi ini memakai **PHP built-in server** + **SQLite**, jadi tidak butuh Nginx/Apache
 di dalam container. Semua permintaan diarahkan lewat `router.php`.
 
+> 📘 Panduan langkah demi langkah untuk server panel (upload ZIP, variabel, domain
+> `portofolio.xiero.biz.id`, HTTPS, update, troubleshooting) ada di
+> **[`deploy/PANDUAN-PANEL.md`](deploy/PANDUAN-PANEL.md)** — lengkap dengan
+> [`deploy/nginx-proxy-portofolio.conf.example`](deploy/nginx-proxy-portofolio.conf.example)
+> untuk reverse proxy domain ke port alokasi.
+
 ### 1. Import egg
 1. Buka **Admin Area → Nests → Import Egg**.
 2. Pilih file `deploy/pterodactyl-egg.json` yang ada di repo ini.
@@ -226,7 +232,38 @@ untuk `post_max_size`. Jika memakai Nginx/Apache, sesuaikan juga:
 
 ### Reverse proxy / domain (opsional)
 Jika memakai Cloudflare atau Nginx di depan panel, aktifkan `TRUST_PROXY=true` di `.env`
-agar cookie sesi mengenali HTTPS.
+agar cookie sesi mengenali HTTPS. Contoh konfigurasi Nginx untuk domain
+`portofolio.xiero.biz.id` ada di
+[`deploy/nginx-proxy-portofolio.conf.example`](deploy/nginx-proxy-portofolio.conf.example),
+dan langkah pemasangannya di [`deploy/PANDUAN-PANEL.md`](deploy/PANDUAN-PANEL.md).
+
+---
+
+## 🧹 Perawatan VPS (bersih-bersih aman)
+
+Skrip `deploy/cleanup-vps.sh` membuang sisa file yang tidak terpakai **tanpa menyentuh data
+server**. Default-nya hanya **melaporkan** (dry-run), jadi aman dijalankan dulu:
+
+```bash
+bash deploy/cleanup-vps.sh                  # laporan: apa yang akan dihapus + ruang disk
+sudo bash deploy/cleanup-vps.sh --apply     # eksekusi
+sudo bash deploy/cleanup-vps.sh --apply --days 14 --journal-days 30
+```
+
+| Dibersihkan | Tidak pernah disentuh |
+| --- | --- |
+| isi `/tmp` & `/var/tmp` lebih tua dari `--days` (default 7) | `/var/lib/pterodactyl/volumes` (file & database tiap server) |
+| cache paket `apt` | `/var/lib/pterodactyl/backups` (hanya dilaporkan ukurannya) |
+| journal systemd lebih tua dari `--journal-days` | `/etc`, `/home`, `/var/www`, `/var/lib/mysql`, `/srv`, `/opt` |
+| image Docker *dangling* + cache build | image bertag, container, dan semua volume Docker |
+
+Skrip memakai daftar path yang dilindungi dan menolak menghapus apa pun di luar `/tmp` dan
+`/var/tmp`. Perintah berisiko seperti `docker system prune` atau `docker volume prune` tidak
+pernah dipakai. Setiap aksi dicatat di `/var/log/portofolio-cleanup.log`.
+
+Backup panel sengaja **tidak** dihapus otomatis (itu data milikmu): skrip menampilkan ukuran
+folder dan umur backup, lalu kamu memutuskan sendiri lewat **panel → Backups**. Simpan 2–3
+backup terakhir saja agar disk tidak penuh.
 
 ---
 
