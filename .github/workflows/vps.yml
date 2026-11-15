@@ -782,22 +782,20 @@ jobs:
           if [ ! -d "$DIR" ]; then echo "=GAGAL folder backup tidak ada"; exit 1; fi
           echo "=TOTAL $(du -sh "$DIR" 2>/dev/null | cut -f1)"
           echo "=ISIDIR $(ls -A "$DIR" 2>/dev/null | wc -l) entri"
-          du -h -d1 "$DIR" 2>/dev/null | sort -h | tail -6 | sed 's|'"$DIR"'/\?||' | sed 's/^/=BESAR /'
-          for d in "$DIR"/*/; do
-            [ -d "$d" ] || continue
-            echo "=BKP $(du -sh "$d" 2>/dev/null | cut -f1)|$(date -r "$d" +%Y-%m-%d)|$(basename "$d")"
-          done | sort -t'|' -k2
-          find "$DIR" -maxdepth 1 -type f -printf '=FILE %s|%TY-%Tm-%Td|%f\n' 2>/dev/null | sort
+          echo "=DF $(df -h "$DIR" | awk 'NR==2{print $2" total, "$3" pakai, "$4" sisa"}')"
+          du -h -d1 "$DIR" 2>/dev/null | sort -rh | head -8 | sed "s|$DIR|.|" | sed 's/^/=BESAR /'
+          ls -la "$DIR" 2>/dev/null | head -8 | sed 's/^/=LS /'
           REMOTE
           )" || true
           echo "$out"
           n=0
           while IFS= read -r line; do
             case "$line" in
-              =BKP*) n=$((n+1)); [ "$n" -le 8 ] && echo "::notice title=Backup::${line#=BKP }" ;;
-              =FILE*) echo "::notice title=Berkas::${line#=FILE }" ;;
-              =BESAR*) n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Ukuran::${line#=BESAR }" ;;
+              =BKP*) echo "::notice title=Backup::${line#=BKP }" ;;
+              =BESAR*) echo "::notice title=Ukuran::${line#=BESAR }" ;;
+              =LS*) echo "::notice title=LS::${line#=LS }" ;;
               =TOTAL*) echo "::notice title=Total::${line#=TOTAL }" ;;
+              =DF*) echo "::notice title=Disk::${line#=DF }" ;;
               =ISIDIR*) echo "::notice title=Isi::${line#=ISIDIR }" ;;
             esac
           done <<< "$out" || true
