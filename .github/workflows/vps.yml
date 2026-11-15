@@ -37,6 +37,7 @@ on:
           - smoke
           - bkp
           - bkp-hapus
+          - bkp-luar-hapus
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -932,6 +933,94 @@ jobs:
           while IFS= read -r line; do
             case "$line" in
               =SERVER*|=TOTAL*|=TERSISA*|=LUAR*) echo "::notice title=Backup::${line#=}";;
+              =AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # -------------------------------------------------------- bkp-luar-hapus ----
+  bkp-luar-hapus:
+    name: Hapus arsip backup di luar panel
+    if: inputs.tugas == 'bkp-luar-hapus'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      MODE: ${{ startsWith(inputs.konfirmasi, 'HAPUS') && 'hapus' || 'laporan' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Hapus arsip yang tidak tercatat di panel
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $MODE" <<'REMOTE' 2>&1
+          set -u
+          MODE="$1"
+          PHPBIN="$(command -v php || true)"
+          [ -n "$PHPBIN" ] || { echo "=GAGAL php CLI tidak ada"; exit 1; }
+          cat > /tmp/luar.php <<'PHP'
+          <?php
+          $mode = $argv[1] ?? 'laporan';
+          $dir  = '/var/lib/pterodactyl/backups';
+          $env = [];
+          foreach (file('/var/www/pterodactyl/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+              if (strpos($line, '=') === false || strpos(ltrim($line), '#') === 0) { continue; }
+              [$k, $v] = explode('=', $line, 2);
+              $k = trim($k); $v = trim($v);
+              if (strlen($v) >= 2 && ($v[0] === chr(34) || $v[0] === chr(39))) { $v = substr($v, 1, -1); }
+              $env[$k] = $v;
+          }
+          $host = $env['DB_HOST'] ?? '127.0.0.1';
+          if (in_array($host, ['localhost', '127.0.0.1'], true)) { $host = '127.0.0.1'; }
+          try {
+              $pdo = new PDO(sprintf('mysql:host=%s;port=%s;dbname=%s', $host, $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel'),
+                             $env['DB_USERNAME'] ?? 'pterodactyl', $env['DB_PASSWORD'] ?? '',
+                             [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          } catch (Throwable $e) {
+              echo "=GAGAL DB: " . $e->getMessage() . "\n";
+              exit(2);
+          }
+          $ada = [];
+          foreach ($pdo->query('SELECT uuid FROM backups') as $r) { $ada[$r['uuid']] = true; }
+          $files = array_merge(glob("$dir/*.tar.gz") ?: [], glob("$dir/*.tar") ?: []);
+          $n = 0; $bytes = 0; $daftar = '';
+          foreach ($files as $f) {
+              if (!is_file($f)) { continue; }
+              $u = str_replace(['.tar.gz', '.tar'], '', basename($f));
+              if (isset($ada[$u])) { continue; }
+              $n++; $bytes += filesize($f);
+              $daftar .= basename($f) . "\n";
+              if ($n <= 8) { printf("=FILE %.1fMB|%s\n", filesize($f) / 1048576, basename($f)); }
+              if ($mode === 'hapus') { @unlink($f); }
+          }
+          file_put_contents('/root/backup-luar-panel-' . date('Y-m-d') . '.txt', $daftar, FILE_APPEND);
+          printf("=TOTAL %d berkas|%d MB|mode=%s\n", $n, (int) round($bytes / 1048576), $mode);
+          echo "=CATATAN /root/backup-luar-panel-" . date('Y-m-d') . ".txt\n";
+          PHP
+          echo "=AWAL $(du -sh /var/lib/pterodactyl/backups 2>/dev/null | cut -f1)"
+          "$PHPBIN" /tmp/luar.php "$MODE" || exit 1
+          echo "=AKHIR $(du -sh /var/lib/pterodactyl/backups 2>/dev/null | cut -f1)"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =FILE*|=TOTAL*|=CATATAN*) echo "::notice title=Arsip::${line#=}";;
               =AWAL*|=AKHIR*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
