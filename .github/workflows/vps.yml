@@ -588,8 +588,22 @@ jobs:
           echo "=PHPBIN $PHPBIN"
           cat > /tmp/fix-startup.php <<'PHP'
           <?php
-          $env = parse_ini_file('/var/www/pterodactyl/.env');
-          $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $env['DB_HOST'] ?? '127.0.0.1', $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel');
+          // Parser .env manual: menangani tanda kutip, spasi, dan karakter khusus.
+          $env = [];
+          foreach (file('/var/www/pterodactyl/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+              if (!preg_match('/^\s*([A-Za-z0-9_]+)\s*=\s*(.*)$/', $line, $m)) { continue; }
+              $v = trim($m[2]);
+              $len = strlen($v);
+              if ($len >= 2 && (($v[0] === '"' && $v[$len-1] === '"') || ($v[0] === "'" && $v[$len-1] === "'"))) {
+                  $v = substr($v, 1, -1);
+              }
+              $env[$m[1]] = $v;
+          }
+          echo "=ENVKEYS " . implode(',', array_intersect(array_keys($env), ['DB_HOST','DB_PORT','DB_DATABASE','DB_USERNAME','DB_PASSWORD'])) . "\n";
+          echo "=PWLEN " . strlen($env['DB_PASSWORD'] ?? '') . "\n";
+          $host = $env['DB_HOST'] ?? '127.0.0.1';
+          if (in_array($host, ['localhost', '127.0.0.1'], true)) { $host = '127.0.0.1'; }
+          $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s', $host, $env['DB_PORT'] ?? '3306', $env['DB_DATABASE'] ?? 'panel');
           try {
               $pdo = new PDO($dsn, $env['DB_USERNAME'] ?? 'pterodactyl', $env['DB_PASSWORD'] ?? '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
           } catch (Throwable $e) {
