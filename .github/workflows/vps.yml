@@ -1497,29 +1497,45 @@ jobs:
               -F "_token=$T2" -F "type=$T" -F "image=@/tmp/brand.png;type=image/png")"
             echo "=UNGGAH $T http=$CODE"
           done
-          SET="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $o=[]; foreach ($d->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ("logo_file","favicon_file","banner_file")") as $r) { $o[$r[0]]=$r[1]; } echo json_encode($o);' 2>&1 | head -1)"
+          cat > "$DIR/.cek-brand.txt" <<'PHP'
+          <?php
+          $mode = $argv[1] ?? 'json';
+          $d = new PDO('sqlite:/home/container/storage/database.sqlite');
+          $out = [];
+          foreach ($d->query('SELECT setting_key, setting_value FROM settings') as $r) {
+              if (in_array((string) $r[0], ['logo_file', 'favicon_file', 'banner_file'], true)) {
+                  $out[(string) $r[0]] = (string) $r[1];
+              }
+          }
+          if ($mode === 'sisa') {
+              echo count(array_filter($out, static fn (string $v): bool => trim($v) !== ''));
+              exit(0);
+          }
+          echo json_encode($out);
+          PHP
+          SET="$(docker exec "$CID" php /home/container/.cek-brand.txt 2>&1 | head -1)"
           echo "=DB $SET"
           HOME_HTML="$(curl -s "$BASE/")"
           for T in logo favicon banner; do
-            F="$(printf '%s' "$SET" | sed -E "s/.*\"${T}_file\":\"([^\"]*)\".*/\1/")"
+            F="$(printf '%s' "$SET" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get(sys.argv[1],""))' "${T}_file" 2>/dev/null)"
             if [ -z "$F" ]; then echo "=BERKAS $T kosong"; continue; fi
             DIM="$(docker exec "$CID" php -r '$d=getimagesize("/home/container/storage/uploads/" . $argv[1]); echo $d ? $d[0]."x".$d[1] : "?";' "$F" 2>/dev/null | head -1)"
             echo "=BERKAS $T=$F|$DIM|media=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$F")|di-header=$(printf '%s' "$HOME_HTML" | grep -c "media/$F")"
           done
           echo "=BANNERKELAS $(printf '%s' "$HOME_HTML" | grep -c 'hero has-banner')"
-          echo "=SUBTITLE $(printf '%s' "$HOME_HTML" | grep -o 'class="brand-name".\{0,160\}' | head -1 | tr -d '\n' | cut -c1-160)"
           for T in logo favicon banner; do
             curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/admin/settings/brand/remove" -d "_token=$T2" -d "type=$T"
           done
-          SISA="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $n=0; foreach ($d->query("SELECT setting_value FROM settings WHERE setting_key IN ("logo_file","favicon_file","banner_file")") as $r) { if (trim((string)$r[0])!=="") $n++; } echo $n;' 2>&1 | head -1)"
+          SISA="$(docker exec "$CID" php /home/container/.cek-brand.txt sisa 2>&1 | head -1)"
           echo "=BERSIH sisa-nonaktif=$SISA"
+          rm -f "$DIR/.cek-brand.txt"
           rm -f "$JAR" /tmp/brand.png "$DIR/.uji-lebar.png"
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =UKURANASAL*|=BERKAS*|=BERSIH*|=UNGGAH*|=TOKEN*) echo "::notice title=Identitas::${line#=}";;
+              =UKURANASAL*|=BERKAS*|=BERSIH*|=UNGGAH*|=TOKEN*|=DB*|=BANNERKELAS*) echo "::notice title=Identitas::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
