@@ -1497,7 +1497,7 @@ jobs:
               -F "_token=$T2" -F "type=$T" -F "image=@/tmp/brand.png;type=image/png")"
             echo "=UNGGAH $T http=$CODE"
           done
-          SET="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $o=[]; foreach ($d->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN (\"logo_file\",\"favicon_file\",\"banner_file\")") as $r) { $o[$r[0]]=$r[1]; } echo json_encode($o);' 2>&1 | head -1)"
+          SET="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $o=[]; foreach ($d->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN ("logo_file","favicon_file","banner_file")") as $r) { $o[$r[0]]=$r[1]; } echo json_encode($o);' 2>&1 | head -1)"
           echo "=DB $SET"
           HOME_HTML="$(curl -s "$BASE/")"
           for T in logo favicon banner; do
@@ -1511,7 +1511,7 @@ jobs:
           for T in logo favicon banner; do
             curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/admin/settings/brand/remove" -d "_token=$T2" -d "type=$T"
           done
-          SISA="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $n=0; foreach ($d->query("SELECT setting_value FROM settings WHERE setting_key IN (\"logo_file\",\"favicon_file\",\"banner_file\")") as $r) { if (trim((string)$r[0])!==\"\") $n++; } echo $n;' 2>&1 | head -1)"
+          SISA="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $n=0; foreach ($d->query("SELECT setting_value FROM settings WHERE setting_key IN ("logo_file","favicon_file","banner_file")") as $r) { if (trim((string)$r[0])!=="") $n++; } echo $n;' 2>&1 | head -1)"
           echo "=BERSIH sisa-nonaktif=$SISA"
           rm -f "$JAR" /tmp/brand.png "$DIR/.uji-lebar.png"
           REMOTE
