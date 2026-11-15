@@ -202,6 +202,17 @@ jobs:
           expect_in_home "hero has-banner"
           expect_in_home "Subjudul uji header"
 
+          # Tanpa pengaturan kustom, situs wajib memakai aset identitas bawaan.
+          php -r 'require "app/bootstrap.php";
+            App\Settings::set("logo_file", "");
+            App\Settings::set("favicon_file", "");
+            App\Settings::set("banner_file", "");
+            App\Settings::set("brand_subtitle", "");
+            App\Settings::flush();'
+          expect_in_home "icons/logo-xiero-512.png"
+          expect_in_home "icons/favicon-32.png"
+          expect_in_home "assets/img/hero-banner.jpg"
+
           slug=$(php -r 'require "app/bootstrap.php"; $items = App\Models\Project::published(1); echo $items[0]["slug"] ?? "";')
           if [ -n "$slug" ]; then
             check "http://127.0.0.1:8080/project/$slug" "Tentang project"

@@ -13,11 +13,7 @@ $pageTitle = isset($title) && $title !== '' ? (string) $title : 'Panel Admin';
 $fullTitle = $pageTitle . ' — ' . $siteTitle;
 $initial = mb_strtoupper(mb_substr((string) ($profile['full_name'] ?? 'P'), 0, 1, 'UTF-8'), 'UTF-8');
 $customFavicon = brand_favicon();
-$favicon = $customFavicon ?: 'data:image/svg+xml,' . rawurlencode(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="' . $accent . '"/>'
-    . '<text x="32" y="44" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="#08101f" text-anchor="middle">'
-    . e($initial) . '</text></svg>'
-);
+$favicon = $customFavicon ?: asset('icons/favicon-32.png');
 
 $unread = 0;
 try {

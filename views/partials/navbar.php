@@ -5,7 +5,7 @@
 $name = (string) ($profile['full_name'] ?? 'Portfolio');
 $headline = (string) ($profile['headline'] ?? '');
 $brand = setting('site_title', 'Portfolio');
-$logo = brand_logo();
+$logo = brand_logo() ?: asset('icons/logo-xiero-512.png');
 $brandSubtitle = trim(setting('brand_subtitle', ''));
 $avatar = media_url($profile['avatar'] ?? null);
 $isHome = current_path() === '/';

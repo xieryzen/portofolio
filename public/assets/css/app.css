@@ -350,7 +350,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
-    opacity: .42;
+    opacity: .52;
     z-index: 0;
     -webkit-mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
     mask-image: radial-gradient(120% 95% at 50% 0%, #000 30%, transparent 88%);
@@ -359,7 +359,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg, rgba(4, 8, 18, .15) 0%, rgba(4, 8, 18, .92) 92%);
+    background: linear-gradient(100deg, rgba(4, 8, 18, .82) 0%, rgba(4, 8, 18, .45) 48%, rgba(4, 8, 18, .9) 100%),
+                linear-gradient(180deg, rgba(4, 8, 18, .2) 0%, rgba(4, 8, 18, .95) 94%);
     z-index: 0;
 }
 .hero.has-banner > .container { position: relative; z-index: 1; }
