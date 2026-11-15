@@ -347,6 +347,9 @@ jobs:
           UUID="$1"
           NAME="$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -F "$UUID" | head -1)"
           if [ -z "$NAME" ]; then echo "=GAGAL container tidak ditemukan"; exit 1; fi
+          IMG="$(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null)"
+          echo "=MODS $(docker run --rm --entrypoint php "$IMG" -m 2>/dev/null | grep -E 'sqlite|pdo|gd|mbstring|curl|zip|fileinfo' | tr '\n' ',' || echo tidak-bisa)"
+          echo "=BASH $(docker run --rm --entrypoint sh "$IMG" -c 'command -v bash || echo tidak-ada' 2>/dev/null || echo tidak-bisa)"
           docker logs --tail 80 "$NAME" 2>&1 | grep -v '^$' | tail -8 | sed 's/^/=LOG /'
           echo "=CONTAINER $NAME"
           echo "=STATE $(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$NAME" 2>/dev/null)"
@@ -357,10 +360,6 @@ jobs:
           echo "=CMD $(docker inspect -f '{{json .Config.Cmd}}' "$NAME" 2>/dev/null)"
           echo "=STARTUP_IN_DB $(mysql -N -B -e "select startup from pterodactyl.servers where uuid='$UUID'" 2>/dev/null || echo tidak-bisa-query)"
           echo "=IMAGE_IN_DB $(mysql -N -B -e "select image from pterodactyl.servers where uuid='$UUID'" 2>/dev/null || echo tidak-bisa-query)"
-          echo "=LOGLINES $(docker logs --tail 200 "$NAME" 2>&1 | wc -l)"
-          IMG="$(docker inspect -f '{{.Config.Image}}' "$NAME" 2>/dev/null)"
-          echo "=BASH $(docker run --rm --entrypoint sh "$IMG" -c 'command -v bash || echo tidak-ada' 2>/dev/null || echo tidak-bisa)"
-          echo "=MODS $(docker run --rm --entrypoint php "$IMG" -m 2>/dev/null | grep -E 'sqlite|pdo|gd|mbstring|curl|zip|fileinfo' | tr '\n' ',' || echo tidak-bisa)"
           REMOTE
           )" || true
           echo "$out"
