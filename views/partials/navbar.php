@@ -5,6 +5,8 @@
 $name = (string) ($profile['full_name'] ?? 'Portfolio');
 $headline = (string) ($profile['headline'] ?? '');
 $brand = setting('site_title', 'Portfolio');
+$logo = brand_logo();
+$brandSubtitle = trim(setting('brand_subtitle', ''));
 $avatar = media_url($profile['avatar'] ?? null);
 $isHome = current_path() === '/';
 $cvUrl = setting('cv_file', '') !== '' ? app_url('/cv') : null;
@@ -13,8 +15,10 @@ $cvUrl = setting('cv_file', '') !== '' ? app_url('/cv') : null;
     <div class="container">
         <div class="header-inner">
             <a class="brand" href="<?= e(app_url('/')) ?>" aria-label="<?= e(t('nav.home')) ?>">
-                <span class="brand-mark">
-                    <?php if ($avatar): ?>
+                <span class="brand-mark<?= $logo ? ' has-logo' : '' ?>">
+                    <?php if ($logo): ?>
+                        <img src="<?= e($logo) ?>" alt="<?= e($brand) ?>">
+                    <?php elseif ($avatar): ?>
                         <img src="<?= e($avatar) ?>" alt="<?= e($name) ?>">
                     <?php else: ?>
                         <?= e(initials($name)) ?>
@@ -22,7 +26,7 @@ $cvUrl = setting('cv_file', '') !== '' ? app_url('/cv') : null;
                 </span>
                 <span class="brand-name">
                     <strong><?= e($brand) ?></strong>
-                    <span><?= e($headline !== '' ? $headline : t('hero.portfolio')) ?></span>
+                    <span><?= e($brandSubtitle !== '' ? $brandSubtitle : ($headline !== '' ? $headline : t('hero.portfolio'))) ?></span>
                 </span>
             </a>
 

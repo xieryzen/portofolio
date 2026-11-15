@@ -40,9 +40,59 @@ $value = static fn (string $key, string $default = ''): string => (string) \old(
                         <span class="hint">Dipakai mesin pencari saat menampilkan situs Anda.</span>
                     </div>
                     <div class="field full">
+                        <label for="brand_subtitle">Teks kecil di bawah judul header</label>
+                        <input class="input" type="text" id="brand_subtitle" name="brand_subtitle" value="<?= e($value('brand_subtitle')) ?>" maxlength="120" placeholder="Contoh: Web Developer & UI Designer">
+                        <span class="hint">Tampil tipis di bawah judul situs pada header. Kosongkan untuk memakai headline profil.</span>
+                    </div>
+                    <div class="field full">
                         <label for="footer_text">Teks footer</label>
                         <input class="input" type="text" id="footer_text" name="footer_text" value="<?= e($value('footer_text')) ?>" maxlength="200">
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-head"><h2>Logo, favicon &amp; banner</h2></div>
+            <div class="card-body">
+                <p class="small muted" style="margin-top:0">
+                    Unggah gambar JPG/PNG/WEBP/GIF. Logo tampil di header (menggantikan foto profil),
+                    favicon jadi ikon tab browser, dan banner menjadi latar bagian atas beranda.
+                </p>
+                <div class="brand-grid">
+                    <?php
+                    $brandItems = [
+                        ['type' => 'logo', 'key' => 'logo_file', 'title' => 'Logo header', 'ratio' => ''],
+                        ['type' => 'favicon', 'key' => 'favicon_file', 'title' => 'Favicon', 'ratio' => ''],
+                        ['type' => 'banner', 'key' => 'banner_file', 'title' => 'Banner beranda', 'ratio' => 'is-banner'],
+                    ];
+                    foreach ($brandItems as $item):
+                        $current = media_url(setting($item['key'], ''));
+                        ?>
+                        <div class="brand-card">
+                            <h3><?= e($item['title']) ?></h3>
+                            <div class="brand-preview <?= e($item['ratio']) ?>">
+                                <?php if ($current): ?>
+                                    <img src="<?= e($current) ?>" alt="<?= e($item['title']) ?>">
+                                <?php else: ?>
+                                    <span>Belum diatur</span>
+                                <?php endif; ?>
+                            </div>
+                            <form method="post" action="<?= e(app_url('/admin/settings/brand')) ?>" enctype="multipart/form-data" style="display:grid;gap:8px">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="type" value="<?= e($item['type']) ?>">
+                                <input class="input" type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required style="padding:9px">
+                                <button class="btn btn-soft btn-sm" type="submit"><?= svg_icon('upload', 'icon-sm') ?> Unggah</button>
+                            </form>
+                            <?php if ($current): ?>
+                                <form method="post" action="<?= e(app_url('/admin/settings/brand/remove')) ?>" onsubmit="return confirm('Hapus gambar ini?')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="type" value="<?= e($item['type']) ?>">
+                                    <button class="btn btn-ghost btn-sm btn-block" type="submit"><?= svg_icon('trash', 'icon-sm') ?> Hapus</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>

@@ -43,6 +43,7 @@ on:
           - akun-ubah
           - diagnosa
           - uji-upload
+          - uji-brand
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1433,6 +1434,79 @@ jobs:
           while IFS= read -r line; do
             case "$line" in
               =HOST*|=PNG*|=HALAMAN*|=UPLOAD*|=FLASH*|=DB*|=MEDIA*|=COVER*|=CVUPLOAD*|=HOME*|=DIRBANDING*|=CMD1*) echo "::notice title=Uji::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          exit 0
+
+  # ----------------------------------------------------------- uji-brand ----
+  uji-brand:
+    name: Uji logo, favicon & banner
+    if: inputs.tugas == 'uji-brand'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Unggah, periksa tampilan, lalu bersihkan
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh 'bash -s' <<'REMOTE' 2>&1
+          set -u
+          DIR="/var/lib/pterodactyl/volumes/2ed93f7b-4009-4eaa-814c-577dee40dd3b"
+          CID="$(docker ps -q --filter name=2ed93f7b 2>/dev/null | head -n 1)"
+          EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          BASE="https://portofolio.xiero.biz.id"
+          printf 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAHUlEQVR42u3OMQEAAAgDoC251a3gLwSgSZMmTZr0zwEBAQH/0kR9AAAAAElFTkSuQmCC' | base64 -d > /tmp/brand.png
+          JAR="$(mktemp)"
+          T1="$(curl -fsS -c "$JAR" "$BASE/login" | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/login" \
+            --data-urlencode "_token=$T1" --data-urlencode "email=$EM" --data-urlencode "password=$PW"
+          T2="$(curl -s -b "$JAR" "$BASE/admin/settings" | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          echo "=TOKEN $([ -n "$T2" ] && echo ada || echo tidak-ada)"
+          for T in logo favicon banner; do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/admin/settings/brand" \
+              -F "_token=$T2" -F "type=$T" -F "image=@/tmp/brand.png;type=image/png")"
+            echo "=UNGGAH $T http=$CODE"
+          done
+          SET="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $o=[]; foreach ($d->query("SELECT setting_key, setting_value FROM settings WHERE setting_key IN (\"logo_file\",\"favicon_file\",\"banner_file\")") as $r) { $o[$r[0]]=$r[1]; } echo json_encode($o);' 2>&1 | head -1)"
+          echo "=DB $SET"
+          HOME_HTML="$(curl -s "$BASE/")"
+          for T in logo favicon banner; do
+            F="$(printf '%s' "$SET" | sed -E "s/.*\"${T}_file\":\"([^\"]*)\".*/\1/")"
+            if [ -z "$F" ]; then echo "=BERKAS $T kosong"; continue; fi
+            echo "=BERKAS $T=$F|media=$(curl -s -o /dev/null -w '%{http_code} %{content_type}' "$BASE/media/$F")|di-header=$(printf '%s' "$HOME_HTML" | grep -c "media/$F")"
+          done
+          echo "=BANNERKELAS $(printf '%s' "$HOME_HTML" | grep -c 'hero has-banner')"
+          echo "=SUBTITLE $(printf '%s' "$HOME_HTML" | grep -o 'class="brand-name".\{0,160\}' | head -1 | tr -d '\n' | cut -c1-160)"
+          for T in logo favicon banner; do
+            curl -s -o /dev/null -b "$JAR" -c "$JAR" -X POST "$BASE/admin/settings/brand/remove" -d "_token=$T2" -d "type=$T"
+          done
+          SISA="$(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $n=0; foreach ($d->query("SELECT setting_value FROM settings WHERE setting_key IN (\"logo_file\",\"favicon_file\",\"banner_file\")") as $r) { if (trim((string)$r[0])!==\"\") $n++; } echo $n;' 2>&1 | head -1)"
+          echo "=BERSIH sisa-nonaktif=$SISA"
+          rm -f "$JAR" /tmp/brand.png
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =TOKEN*|=UNGGAH*|=DB*|=BERKAS*|=BANNERKELAS*|=SUBTITLE*|=BERSIH*) echo "::notice title=Identitas::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true

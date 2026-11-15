@@ -10,6 +10,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Notifier;
 use App\Settings;
+use App\Uploader;
 use App\Validator;
 
 final class SettingsController extends Controller
@@ -36,6 +37,7 @@ final class SettingsController extends Controller
             'meta_description' => $this->inputString('meta_description'),
             'accent_color' => $this->inputString('accent_color'),
             'footer_text' => $this->inputString('footer_text'),
+            'brand_subtitle' => $this->inputString('brand_subtitle'),
             'show_contact' => $this->input('show_contact') === '1' ? '1' : '0',
             'allow_registration' => $this->input('allow_registration') === '1' ? '1' : '0',
             'notify_contact' => $this->input('notify_contact') === '1' ? '1' : '0',
@@ -47,6 +49,7 @@ final class SettingsController extends Controller
                 'site_title' => 'required|min:2|max:80',
                 'meta_description' => 'max:300',
                 'footer_text' => 'max:200',
+                'brand_subtitle' => 'max:120',
             ],
             ['site_title' => 'Judul situs', 'meta_description' => 'Deskripsi meta']
         );
@@ -64,6 +67,99 @@ final class SettingsController extends Controller
 
         ActivityLog::record('settings_updated', 'Memperbarui pengaturan situs');
         \flash('success', 'Pengaturan situs disimpan.');
+        $this->redirect('/admin/settings');
+    }
+
+    /**
+     * Kunci setting untuk tiap jenis gambar identitas.
+     *
+     * @return array<string, string>
+     */
+    private static function brandKeys(): array
+    {
+        return [
+            'logo' => 'logo_file',
+            'favicon' => 'favicon_file',
+            'banner' => 'banner_file',
+        ];
+    }
+
+    public function uploadBrand(): void
+    {
+        Auth::requireOwner();
+
+        $type = $this->inputString('type');
+        $keys = self::brandKeys();
+
+        if (!isset($keys[$type])) {
+            \flash('error', 'Jenis gambar tidak dikenal.');
+
+            $this->redirect('/admin/settings');
+        }
+
+        $file = $_FILES['image'] ?? null;
+
+        if ($this->uploadTooLarge()) {
+            \flash('error', 'Berkas terlalu besar untuk server (batas ' . $this->uploadLimitMb() . ' MB). Kompres gambar lalu unggah lagi.');
+            $this->redirect('/admin/settings');
+        }
+
+        if (!is_array($file)) {
+            \flash('error', 'Pilih berkas gambar terlebih dahulu.');
+
+            $this->redirect('/admin/settings');
+        }
+
+        $result = Uploader::image($file, $type);
+
+        if (($result['ok'] ?? false) !== true) {
+            \flash('error', (string) ($result['error'] ?? 'Gagal mengunggah gambar.'));
+
+            $this->redirect('/admin/settings');
+        }
+
+        $key = $keys[$type];
+        $old = setting($key, '');
+        $newFile = (string) ($result['file'] ?? '');
+
+        Settings::set($key, $newFile);
+        Settings::flush();
+
+        if ($old !== '' && $old !== $newFile) {
+            Uploader::delete($old);
+        }
+
+        $labels = ['logo' => 'Logo header', 'favicon' => 'Favicon', 'banner' => 'Banner beranda'];
+        ActivityLog::record('brand_updated', 'Memperbarui ' . ($labels[$type] ?? $type));
+        \flash('success', ($labels[$type] ?? 'Gambar') . ' berhasil diperbarui.');
+        $this->redirect('/admin/settings');
+    }
+
+    public function removeBrand(): void
+    {
+        Auth::requireOwner();
+
+        $type = $this->inputString('type');
+        $keys = self::brandKeys();
+
+        if (!isset($keys[$type])) {
+            \flash('error', 'Jenis gambar tidak dikenal.');
+
+            $this->redirect('/admin/settings');
+        }
+
+        $key = $keys[$type];
+        $old = setting($key, '');
+
+        if ($old !== '') {
+            Uploader::delete($old);
+        }
+
+        Settings::set($key, '');
+        Settings::flush();
+
+        ActivityLog::record('brand_removed', 'Menghapus ' . $type . ' kustom');
+        \flash('success', 'Gambar kustom dihapus, kembali ke tampilan bawaan.');
         $this->redirect('/admin/settings');
     }
 

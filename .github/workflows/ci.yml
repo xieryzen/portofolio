@@ -61,6 +61,45 @@ jobs:
           echo "✔ TOTP & kode pemulihan OK\n";
           '
 
+      - name: Uji identitas situs (logo, favicon, banner, upsert profil)
+        run: |
+          set -euo pipefail
+          php -r '
+          require "app/bootstrap.php";
+
+          // Upsert: unggah gambar sebelum baris profil ada.
+          App\Database::connection()->exec("DELETE FROM profiles");
+          App\Models\Profile::setImage("avatar", "uji-avatar.png");
+          $profil = App\Models\Profile::get();
+          if (($profil["avatar"] ?? null) !== "uji-avatar.png") {
+              fwrite(STDERR, "setImage gagal saat profiles kosong\n"); exit(1);
+          }
+
+          App\Models\Profile::setImage("cover", "uji-cover.png");
+          $profil = App\Models\Profile::get();
+          if (($profil["cover"] ?? null) !== "uji-cover.png") {
+              fwrite(STDERR, "setImage cover gagal\n"); exit(1);
+          }
+
+          App\Settings::set("logo_file", "uji-logo.png");
+          App\Settings::set("favicon_file", "uji-favicon.png");
+          App\Settings::set("banner_file", "uji-banner.png");
+          App\Settings::set("brand_subtitle", "Subjudul uji header");
+          App\Settings::flush();
+
+          if (brand_logo() !== app_url("/media/uji-logo.png")) { fwrite(STDERR, "brand_logo salah\n"); exit(1); }
+          if (brand_favicon() !== app_url("/media/uji-favicon.png")) { fwrite(STDERR, "brand_favicon salah\n"); exit(1); }
+          if (hero_banner() !== app_url("/media/uji-banner.png")) { fwrite(STDERR, "hero_banner salah\n"); exit(1); }
+          if (trim(setting("brand_subtitle")) !== "Subjudul uji header") { fwrite(STDERR, "brand_subtitle salah\n"); exit(1); }
+
+          App\Settings::set("logo_file", "");
+          App\Settings::flush();
+          if (brand_logo() !== null) { fwrite(STDERR, "brand_logo harus null saat kosong\n"); exit(1); }
+          App\Settings::set("logo_file", "uji-logo.png");
+          App\Settings::flush();
+          echo "✔ upsert profil + helper identitas situs OK\n";
+          '
+
       - name: Smoke test HTTP
         run: |
           set -euo pipefail
@@ -90,6 +129,16 @@ jobs:
             echo "✔ $url"
           }
 
+          expect_in_home() {
+            local needle="$1" body
+            body=$(curl -sS http://127.0.0.1:8080/)
+            if ! printf '%s' "$body" | grep -q -- "$needle"; then
+              echo "✖ Halaman depan tidak memuat: $needle"
+              exit 1
+            fi
+            echo "✔ halaman depan memuat: $needle"
+          }
+
           check "http://127.0.0.1:8080/" "Karya pilihan"
           check "http://127.0.0.1:8080/?lang=en" "Selected work"
           check "http://127.0.0.1:8080/login" "Masuk"
@@ -100,6 +149,12 @@ jobs:
           check "http://127.0.0.1:8080/sitemap.xml" "<urlset"
           check "http://127.0.0.1:8080/robots.txt" "Sitemap"
           check "http://127.0.0.1:8080/manifest.webmanifest" "start_url"
+
+          expect_in_home "uji-logo.png"
+          expect_in_home "uji-favicon.png"
+          expect_in_home "uji-banner.png"
+          expect_in_home "hero has-banner"
+          expect_in_home "Subjudul uji header"
 
           slug=$(php -r 'require "app/bootstrap.php"; $items = App\Models\Project::published(1); echo $items[0]["slug"] ?? "";')
           if [ -n "$slug" ]; then
