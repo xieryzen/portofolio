@@ -33,6 +33,7 @@ on:
           - logs
           - web-setup
           - fix-startup
+          - start-server
           - bersih-laporan
           - bersih-hapus
           - deploy-panel
@@ -640,6 +641,64 @@ jobs:
             esac
           done <<< "$out" || true
           if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
+          exit 0
+
+  # --------------------------------------------------------- start-server ----
+  start-server:
+    name: Nyalakan server lewat panel
+    if: inputs.tugas == 'start-server'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      SERVER_ID: ${{ secrets.PTERO_SERVER_ID || '2ed93f7b-4009-4eaa-814c-577dee40dd3b' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Kirim perintah start & cek hasil
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $SERVER_ID" <<'REMOTE' 2>&1
+          set -u
+          UUID="$1"
+          cd /var/www/pterodactyl || { echo "=GAGAL panel dir"; exit 1; }
+          PHPBIN="$(command -v php || true)"
+          echo "=HELP $("$PHPBIN" artisan p:server:bulk-power --help 2>&1 | grep -E 'servers|action|Usage' | head -4 | tr '\n' '|')"
+          for variant in "--servers=$UUID" "--server=$UUID" ""; do
+            if "$PHPBIN" artisan p:server:bulk-power start $variant -n >/tmp/power.log 2>&1; then
+              echo "=OK start variant='${variant:-(interaktif)}'"
+              break
+            fi
+          done
+          sleep 25
+          LINE="$(docker ps -a --format '{{.Names}}|{{.Status}}' 2>/dev/null | grep -F "$UUID" | head -1)"
+          echo "=CONTAINER ${LINE:-belum-ada}"
+          if [ -n "${LINE:-}" ]; then
+            NAME="${LINE%%|*}"
+            docker logs --tail 20 "$NAME" 2>&1 | grep -v '^$' | tail -4 | sed 's/^/=LOG /'
+          fi
+          REMOTE
+          )" || true
+          echo "$out"
+          n=0
+          while IFS= read -r line; do
+            case "$line" in
+              =*) n=$((n+1)); [ "$n" -le 12 ] && echo "::notice title=Start::${line#=}" ;;
+            esac
+          done <<< "$out" || true
           exit 0
 
   # -------------------------------------------------------------- bersih ----
