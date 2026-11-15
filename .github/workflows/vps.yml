@@ -40,6 +40,7 @@ on:
           - bkp-luar-hapus
           - kredensial
           - akun
+          - akun-ubah
           - orphan
           - bersih-laporan
           - bersih-hapus
@@ -1189,6 +1190,112 @@ jobs:
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
+          exit 0
+
+  # ----------------------------------------------------------- akun-ubah ----
+  akun-ubah:
+    name: Samakan akun owner dengan .env
+    if: inputs.tugas == 'akun-ubah'
+    runs-on: ubuntu-latest
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+      VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+      MODE: ${{ startsWith(inputs.konfirmasi, 'UBAH') && 'ubah' || 'laporan' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validasi kredensial SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          if [ -z "${VPS_SSH_KEY:-}" ] && [ -z "${VPS_SSH_PASSWORD:-}" ]; then
+            echo "::error title=Kredensial belum ada::Tambahkan secret VPS_SSH_PASSWORD (atau VPS_SSH_KEY)"
+            exit 1
+          fi
+
+      - name: Selaraskan email & hash password owner, lalu uji login
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_PASSWORD: ${{ secrets.VPS_SSH_PASSWORD }}
+        run: |
+          set -uo pipefail
+          out="$(bash deploy/gha-ssh.sh "bash -s -- $MODE" <<'REMOTE' 2>&1
+          set -u
+          MODE="$1"
+          DIR="/var/lib/pterodactyl/volumes/2ed93f7b-4009-4eaa-814c-577dee40dd3b"
+          CID="$(docker ps -q --filter name=2ed93f7b 2>/dev/null | head -n 1)"
+          [ -n "$CID" ] || { echo "=GAGAL container server tidak jalan"; exit 1; }
+          cat > /tmp/akun-ubah.php <<'PHP'
+          <?php
+          $mode = $argv[1] ?? 'laporan';
+          $env = [];
+          foreach (file('/home/container/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+              if (strpos($line, '=') === false || strpos(ltrim($line), '#') === 0) { continue; }
+              [$k, $v] = explode('=', $line, 2);
+              $k = trim($k); $v = trim($v);
+              if (strlen($v) >= 2 && ($v[0] === chr(34) || $v[0] === chr(39))) { $v = substr($v, 1, -1); }
+              $env[$k] = $v;
+          }
+          $pw = $env['OWNER_PASSWORD'] ?? '';
+          $em = strtolower(trim($env['OWNER_EMAIL'] ?? ''));
+          if (strlen($pw) < 8) { echo "=GAGAL OWNER_PASSWORD di .env kosong / kurang dari 8 karakter\n"; exit(1); }
+          if (!filter_var($em, FILTER_VALIDATE_EMAIL)) { echo "=GAGAL OWNER_EMAIL di .env tidak valid\n"; exit(1); }
+          try {
+              $db = new PDO('sqlite:/home/container/storage/database.sqlite', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+          } catch (Throwable $e) {
+              echo "=GAGAL DB: " . $e->getMessage() . "\n"; exit(2);
+          }
+          $user = $db->query("SELECT id, email, role FROM users ORDER BY (role = 'owner') DESC, id LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+          if (!$user) { echo "=GAGAL tabel users kosong\n"; exit(2); }
+          $mask = static fn (string $e): string => substr($e, 0, 3) . '***' . (string) strstr($e, '@');
+          printf("=RENCANA id=%d|email %s -> %s|hash dari OWNER_PASSWORD .env\n", $user['id'], $mask($user['email']), $em);
+          if ($mode !== 'ubah') { echo "=MODE laporan (tidak ada perubahan)\n"; exit(0); }
+          try {
+              $db->beginTransaction();
+              $stmt = $db->prepare('UPDATE users SET email = ?, password_hash = ?, updated_at = ? WHERE id = ?');
+              $stmt->execute([$em, password_hash($pw, PASSWORD_DEFAULT), date('Y-m-d H:i:s'), $user['id']]);
+              $rows = $stmt->rowCount();
+              try { $db->exec('DELETE FROM login_attempts'); } catch (Throwable $e) { }
+              $db->commit();
+          } catch (Throwable $e) {
+              if ($db->inTransaction()) { $db->rollBack(); }
+              echo "=GAGAL update: " . $e->getMessage() . "\n"; exit(3);
+          }
+          printf("=UBAH berhasil|baris=%d|email=%s|pola=%s****%s|panjang=%d\n", $rows, $em, substr($pw, 0, 4), substr($pw, -1), strlen($pw));
+          PHP
+          docker cp /tmp/akun-ubah.php "$CID:/tmp/akun-ubah.php" >/dev/null
+          docker exec "$CID" php /tmp/akun-ubah.php "$MODE" 2>&1 | head -10
+          EM="$(grep -E '^OWNER_EMAIL=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          PW="$(grep -E '^OWNER_PASSWORD=' "$DIR/.env" | tail -n 1 | cut -d '=' -f 2- | tr -d '\r"')"
+          BASE="https://portofolio.xiero.biz.id"
+          JAR="$(mktemp)"
+          TOKEN="$(curl -fsS -c "$JAR" "$BASE/login" 2>/dev/null | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          if [ -n "$TOKEN" ]; then
+            HDR="$(mktemp)"
+            curl -s -o /dev/null -D "$HDR" -b "$JAR" -c "$JAR" -X POST "$BASE/login" \
+              --data-urlencode "_token=$TOKEN" --data-urlencode "email=$EM" --data-urlencode "password=$PW" || true
+            LOC="$(grep -i '^location:' "$HDR" | tail -n 1 | tr -d '\r' | sed -E 's/^[Ll]ocation: *//')"
+            rm -f "$HDR"
+            ADMIN="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/admin")"
+            PROFIL="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/profil")"
+            echo "=LOGIN email=$EM|tujuan=${LOC:-<kosong>}|/admin=$ADMIN|/profil=$PROFIL"
+          else
+            echo "=LOGIN token CSRF tidak ditemukan"
+          fi
+          rm -f "$JAR"
+          REMOTE
+          )" || true
+          echo "$out"
+          while IFS= read -r line; do
+            case "$line" in
+              =RENCANA*|=UBAH*) echo "::notice title=Akun::${line#=}";;
+              =LOGIN*) echo "::notice title=Uji login::${line#=}";;
+              =MODE*) echo "::notice title=Info::${line#=}";;
+              =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
+            esac
+          done <<< "$out" || true
+          if echo "$out" | grep -q '^=GAGAL'; then exit 1; fi
           exit 0
 
   # --------------------------------------------------------------- orphan ----
