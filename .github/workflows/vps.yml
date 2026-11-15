@@ -1345,12 +1345,15 @@ jobs:
           echo "=OWNER $(stat -c "%u:%g" "$DIR/storage/uploads" 2>/dev/null) app=$(docker exec "$CID" sh -c "id -u; id -g" 2>/dev/null | tr "\n" ":")"
           echo "=LOG $(docker exec "$CID" sh -c 'ls -1t storage/logs/*.log 0 2>/dev/null | head -1' 2>&1 | head -1)"
           echo "=TAIL $(docker logs --tail 400 "$CID" 2>&1 | grep -iE "upload|fatal|uncaught|error" | tail -4 | tr "\n" " | " | cut -c1-600)"
+          echo "=PROSES $(docker exec "$CID" sh -c 'ps -eo args 2>/dev/null | grep "php -S" | grep -v grep | head -1' 2>&1 | cut -c1-400)"
+          echo "=DB $(docker exec "$CID" php -r '$d=new PDO("sqlite:storage/database.sqlite"); $r=$d->query("SELECT id, avatar, cover FROM profiles LIMIT 1")->fetch(PDO::FETCH_ASSOC); echo $r ? "id=".$r["id"]." avatar=".($r["avatar"]?:"<kosong>")." cover=".($r["cover"]?:"<kosong>") : "TIDAK ADA BARIS profiles"; foreach ($d->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE \"cv%\" OR setting_key=\"site_title\"") as $x) { echo " | ".$x[0]."=".$x[1]; }' 2>&1 | head -2)"
+          echo "=BERKAS $(docker exec "$CID" sh -c 'ls -1t storage/uploads 2>/dev/null | head -5' 2>&1 | tr "\n" " ")"
           REMOTE
           )" || true
           echo "$out"
           while IFS= read -r line; do
             case "$line" in
-              =INI*|=EXT*|=IZIN*|=ENVLIMIT*|=JUMLAH*|=OWNER*|=LOG*|=TAIL*) echo "::notice title=Diagnosa::${line#=}";;
+              =INI*|=EXT*|=IZIN*|=ENVLIMIT*|=JUMLAH*|=OWNER*|=LOG*|=TAIL*|=PROSES*|=DB*|=BERKAS*) echo "::notice title=Diagnosa::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
           done <<< "$out" || true
