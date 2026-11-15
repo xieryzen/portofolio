@@ -45,74 +45,84 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  cek:
-    name: Cek konektivitas VPS
+  # Tugas "cek" dipecah per titik uji: setiap job berdiri sendiri sehingga
+  # lulus/gagalnya terlihat jelas di API tanpa perlu mengunduh log:
+  #   gh api repos/<owner>/<repo>/actions/runs/<id>/jobs
+  cek-dns:
+    name: Cek DNS
     if: inputs.tugas == 'cek'
     runs-on: ubuntu-latest
     env:
       VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
-      HASIL: ${{ github.workspace }}/hasil-cek.txt
     steps:
-      # Semua langkah memakai continue-on-error agar seluruh titik diuji,
-      # lalu langkah terakhir gagal bila ada satu saja yang GAGAL.
-      # Status tiap langkah bisa dibaca tanpa log:
-      #   gh api repos/<owner>/<repo>/actions/runs/<id>/jobs
-      - name: Mulai
-        run: ': > "$HASIL"'
-
-      - name: DNS ter-resolve
-        continue-on-error: true
+      - name: Resolusi host + domain
         run: |
-          ok=1
+          set -euo pipefail
           for host in "$VPS_HOST" panel.hexnitystore.com portofolio.xiero.biz.id; do
             ip="$(getent hosts "$host" | awk '{print $1}' | head -1)"
             echo "$host -> ${ip:-GAGAL}"
-            [ -n "$ip" ] || ok=0
+            [ -n "$ip" ]
           done
-          if [ "$ok" = 1 ]; then echo "OK    dns" >> "$HASIL"; else echo "GAGAL dns" >> "$HASIL"; exit 1; fi
 
-      - name: Port 22
-        continue-on-error: true
-        run: |
-          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22'; then echo "OK    port-22" >> "$HASIL"; else echo "GAGAL port-22" >> "$HASIL"; exit 1; fi
+  cek-port22:
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+    name: Cek port 22
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    steps:
+      - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22' && echo "port 22 terbuka"
 
-      - name: Port 80
-        continue-on-error: true
-        run: |
-          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/80'; then echo "OK    port-80" >> "$HASIL"; else echo "GAGAL port-80" >> "$HASIL"; exit 1; fi
+  cek-port80:
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+    name: Cek port 80
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    steps:
+      - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/80' && echo "port 80 terbuka"
 
-      - name: Port 443
-        continue-on-error: true
-        run: |
-          if timeout 8 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/443'; then echo "OK    port-443" >> "$HASIL"; else echo "GAGAL port-443" >> "$HASIL"; exit 1; fi
+  cek-port443:
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+    name: Cek port 443
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    steps:
+      - run: timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/443' && echo "port 443 terbuka"
 
-      - name: Banner SSH
-        continue-on-error: true
+  cek-ssh:
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST || '38.47.92.214' }}
+    name: Cek banner SSH
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baca banner
         run: |
-          banner="$(timeout 10 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' 2>/dev/null | tr -d '\000' || true)"
+          set -euo pipefail
+          banner="$(timeout 12 bash -c 'exec 3<>/dev/tcp/'"$VPS_HOST"'/22; head -c 60 <&3' | tr -d '\000' || true)"
           echo "banner: ${banner:-<kosong>}"
-          case "$banner" in SSH-*) echo "OK    banner-ssh" >> "$HASIL" ;; *) echo "GAGAL banner-ssh" >> "$HASIL"; exit 1 ;; esac
+          case "$banner" in SSH-*) exit 0 ;; *) exit 1 ;; esac
 
+  cek-web:
+    name: Cek panel & situs
+    if: inputs.tugas == 'cek'
+    runs-on: ubuntu-latest
+    steps:
       - name: Panel HTTPS
-        continue-on-error: true
         run: |
+          set -euo pipefail
           code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://panel.hexnitystore.com || echo 000)"
           echo "panel -> HTTP $code"
-          case "$code" in 2*|3*) echo "OK    panel" >> "$HASIL" ;; *) echo "GAGAL panel" >> "$HASIL"; exit 1 ;; esac
+          case "$code" in 2*|3*) exit 0 ;; *) exit 1 ;; esac
 
       - name: Situs portofolio
-        continue-on-error: true
         run: |
+          set -euo pipefail
           code="$(curl -sS -o /dev/null -m 25 -w '%{http_code}' https://portofolio.xiero.biz.id || echo 000)"
           echo "situs -> HTTP $code"
-          case "$code" in 2*|3*) echo "OK    situs" >> "$HASIL" ;; *) echo "GAGAL situs" >> "$HASIL"; exit 1 ;; esac
-
-      - name: Ringkasan
-        run: |
-          echo "=== Ringkasan uji jangkauan ==="
-          cat "$HASIL"
-          echo "=== akhir ==="
-          if grep -q '^GAGAL' "$HASIL"; then exit 1; fi
+          case "$code" in 2*|3*) exit 0 ;; *) exit 1 ;; esac
 
   bersih:
     name: Bersih-bersih VPS
