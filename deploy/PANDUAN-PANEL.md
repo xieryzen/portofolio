@@ -277,7 +277,8 @@ GitHub, yang punya akses internet penuh:
    disarankan) **atau** `VPS_SSH_PASSWORD`; opsional `VPS_HOST`, `VPS_USER`.
    Untuk deploy tanpa SSH: `PTERO_SERVER_ID` + `PTERO_API_KEY`.
 2. Tab **Actions** → **VPS** → *Run workflow*, pilih tugas:
-   `cek`, `bersih-laporan`, `bersih-hapus` (konfirmasi `BERSIHKAN`), atau `deploy-panel`.
+   `cek`, `info` (baca keadaan server), `deploy-ssh` (konfirmasi `DEPLOY`),
+   `bersih-laporan`, `bersih-hapus` (konfirmasi `BERSIHKAN`), atau `deploy-panel`.
 3. Log job menampilkan hasil; kredensial otomatis di-mask.
 
 ---
