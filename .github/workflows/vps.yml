@@ -1087,6 +1087,20 @@ jobs:
           else
             echo "=CATATAN database.sqlite tidak ditemukan"
           fi
+          # Uji kredensial langsung ke situs (tanpa mencetak password).
+          BASE="https://portofolio.xiero.biz.id"
+          JAR="$(mktemp)"
+          TOKEN="$(curl -fsS -c "$JAR" "$BASE/login" 2>/dev/null | grep -o 'name="_token" value="[^"]*"' | head -n 1 | sed -E 's/.*value="//; s/"$//')"
+          if [ -n "$TOKEN" ]; then
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/login" \
+              --data-urlencode "_token=$TOKEN" --data-urlencode "email=$EMAIL" --data-urlencode "password=$PASS")"
+            ADMIN="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/admin")"
+            PROFIL="$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" "$BASE/profil")"
+            echo "=LOGIN POST=$CODE /admin=$ADMIN /profil=$PROFIL"
+          else
+            echo "=LOGIN tidak bisa ambil token CSRF"
+          fi
+          rm -f "$JAR"
           mkdir -p /root
           printf "EMAIL: %s\nPASSWORD: %s\nSumber: %s/.env\n" "$EMAIL" "$PASS" "$DIR" > /root/kredensial-portofolio.txt
           chmod 600 /root/kredensial-portofolio.txt
@@ -1098,6 +1112,7 @@ jobs:
             case "$line" in
               =EMAIL*|=PWPANJANG*|=PWPOLA*|=DIR*) echo "::notice title=Kredensial::${line#=}";;
               =AKUN*) echo "::notice title=Akun::${line#=}";;
+              =LOGIN*) echo "::notice title=Uji login::${line#=}";;
               =BERKAS*|=CATATAN*) echo "::notice title=Info::${line#=}";;
               =GAGAL*) echo "::error title=Gagal::${line#=GAGAL }";;
             esac
